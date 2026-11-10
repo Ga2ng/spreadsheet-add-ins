@@ -1809,3 +1809,215 @@ function replaceGenericSelectedRange(payload) {
     updatedList: updatedList
   };
 }
+
+/**
+ * ============================================================================
+ * FITUR CTRL+F & CTRL+H: FIND & REPLACE DATA DI SELURUH SHEET YANG TERBUKA
+ * ============================================================================
+ * Mencari data pada seluruh sheet yang sedang dibuka (atau seluruh sheet dokumen).
+ * Mendukung teks, angka, partial match / exact match, dan case-sensitivity.
+ */
+function findDataInSheet(params) {
+  if (!params || !params.searchText) {
+    throw new Error("Teks pencarian tidak boleh kosong.");
+  }
+
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var scope = params.scope || "active"; // "active" atau "all_sheets"
+  var sheets = scope === "all_sheets" ? ss.getSheets() : [ss.getActiveSheet()];
+
+  var rawSearch = String(params.searchText).trim();
+  var replaceWith = params.replaceText !== undefined ? String(params.replaceText) : "";
+  var matchCase = !!params.matchCase;
+  var matchEntireCell = !!params.matchEntireCell;
+
+  var searchLower = rawSearch.toLowerCase();
+  var numSearch = parseCleanPrice_(rawSearch);
+
+  var allMatches = [];
+
+  for (var s = 0; s < sheets.length; s++) {
+    var sheet = sheets[s];
+    var range = sheet.getDataRange();
+    if (!range) continue;
+    var numRows = range.getNumRows();
+    var numCols = range.getNumColumns();
+    if (numRows < 1 || numCols < 1) continue;
+
+    var rawVals = range.getValues();
+    var dispVals = range.getDisplayValues();
+    var formulas = range.getFormulas();
+
+    // Dapatkan baris header teratas untuk konteks kolom
+    var colHeaders = [];
+    if (numRows > 0) {
+      for (var c = 0; c < numCols; c++) {
+        colHeaders.push(String(dispVals[0][c] || "").trim());
+      }
+    }
+
+    for (var r = 0; r < numRows; r++) {
+      // Dapatkan konteks nama baris (kolom teks pertama yang tidak kosong)
+      var rowContext = "";
+      for (var cIdx = 0; cIdx < Math.min(3, numCols); cIdx++) {
+        var cv = String(dispVals[r][cIdx] || "").trim();
+        if (cv && !/^\d+$/.test(cv)) {
+          rowContext = cv;
+          break;
+        }
+      }
+      if (!rowContext) rowContext = "Baris " + (r + 1);
+
+      for (var c = 0; c < numCols; c++) {
+        var rawVal = rawVals[r][c];
+        var dispVal = String(dispVals[r][c] || "").trim();
+        var formulaVal = String(formulas[r][c] || "").trim();
+
+        if (dispVal === "" && formulaVal === "") continue;
+
+        var isMatch = false;
+        var proposedNewVal = replaceWith;
+
+        var targetText = dispVal;
+        var targetToCompare = matchCase ? targetText : targetText.toLowerCase();
+        var searchToCompare = matchCase ? rawSearch : searchLower;
+
+        if (matchEntireCell) {
+          if (targetToCompare === searchToCompare) {
+            isMatch = true;
+            proposedNewVal = replaceWith;
+          } else if (numSearch !== null && !isNaN(numSearch)) {
+            // Cek kecocokan numerik (misal 13814 === 13814)
+            var cellNum = parseCleanPrice_(dispVal);
+            if (cellNum !== null && !isNaN(cellNum) && Math.abs(cellNum - numSearch) < 0.0001) {
+              isMatch = true;
+              proposedNewVal = replaceWith;
+            }
+          }
+        } else {
+          // Substring / partial match
+          var idx = targetToCompare.indexOf(searchToCompare);
+          if (idx !== -1) {
+            isMatch = true;
+            // Ganti substring dengan mempertahankan pola
+            if (matchCase) {
+              proposedNewVal = targetText.split(rawSearch).join(replaceWith);
+            } else {
+              // Case-insensitive regex replace
+              var escaped = rawSearch.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+              var reg = new RegExp(escaped, "gi");
+              proposedNewVal = targetText.replace(reg, replaceWith);
+            }
+          }
+        }
+
+        if (isMatch) {
+          var sheetRow = r + 1;
+          var sheetCol = c + 1;
+          var colLetter = colNumberToLetter_(sheetCol);
+          var cellAddr = colLetter + sheetRow;
+          var colHeader = colHeaders[c] || ("Kolom " + colLetter);
+
+          allMatches.push({
+            sheetName: sheet.getName(),
+            sheetRow: sheetRow,
+            sheetCol: sheetCol,
+            cellAddress: cellAddr,
+            oldValue: rawVal !== null && rawVal !== undefined ? rawVal : dispVal,
+            displayValue: dispVal,
+            newValue: proposedNewVal,
+            rowContext: rowContext,
+            columnHeader: colHeader,
+            isChecked: true
+          });
+        }
+      }
+    }
+  }
+
+  return {
+    success: true,
+    activeSheetName: ss.getActiveSheet().getName(),
+    scope: scope,
+    totalMatches: allMatches.length,
+    searchText: rawSearch,
+    replaceText: replaceWith,
+    matches: allMatches
+  };
+}
+
+/**
+ * Mengganti data di sheet secara massal berdasarkan hasil pencarian Ctrl+H.
+ * Mewarnai seluruh sel yang diubah dengan warna hijau (#dcfce7).
+ */
+function replaceDataInSheet(params) {
+  if (!params || !Array.isArray(params.selectedMatches) || params.selectedMatches.length === 0) {
+    throw new Error("Tidak ada item yang dipilih untuk di-replace.");
+  }
+
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var applyHighlight = params.applyHighlight !== false;
+  var highlightColor = params.highlightColor || "#dcfce7";
+
+  var matches = params.selectedMatches;
+  var updatedCount = 0;
+  var updatedList = [];
+
+  // Kelompokkan berdasarkan sheet agar efisien
+  var sheetMap = {};
+  for (var i = 0; i < matches.length; i++) {
+    var m = matches[i];
+    var sName = m.sheetName || ss.getActiveSheet().getName();
+    if (!sheetMap[sName]) sheetMap[sName] = [];
+    sheetMap[sName].push(m);
+  }
+
+  for (var sName in sheetMap) {
+    var sheet = ss.getSheetByName(sName);
+    if (!sheet) continue;
+
+    var items = sheetMap[sName];
+    for (var j = 0; j < items.length; j++) {
+      var item = items[j];
+      var row = Number(item.sheetRow);
+      var col = Number(item.sheetCol);
+      var rawVal = item.newValue;
+
+      if (row > 0 && col > 0 && rawVal !== undefined && rawVal !== null) {
+        var cell = sheet.getRange(row, col);
+        var strVal = String(rawVal).trim();
+
+        if (strVal.indexOf("=") === 0) {
+          cell.setFormula(strVal);
+        } else {
+          // Parse jika nilai baru adalah angka
+          var num = parseCleanPrice_(strVal);
+          if (num !== null && !isNaN(num) && /^-?\d+(\.\d+)?$/.test(String(num)) && !/[a-zA-Z]/.test(strVal)) {
+            cell.setValue(num);
+          } else {
+            cell.setValue(rawVal);
+          }
+        }
+
+        if (applyHighlight && highlightColor) {
+          cell.setBackground(highlightColor);
+        }
+
+        updatedCount++;
+        updatedList.push({
+          sheetName: sName,
+          cellAddress: item.cellAddress || (colNumberToLetter_(col) + row),
+          oldValue: item.oldValue,
+          newValue: rawVal
+        });
+      }
+    }
+  }
+
+  return {
+    success: true,
+    totalUpdated: updatedCount,
+    highlightColor: applyHighlight ? highlightColor : null,
+    updatedList: updatedList
+  };
+}

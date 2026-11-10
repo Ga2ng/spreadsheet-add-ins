@@ -1,223 +1,353 @@
 <!--
 ===============================================================================
-MENU 03: REPLACE RANGE SELEKSI (ReplaceHppView.html)
+MENU 03: REPLACE RANGE & FIND & REPLACE (ReplaceHppView.html)
 ===============================================================================
 Fitur:
-1. Membaca range yang sedang diblok/diseleksi di Google Sheets (Sheet Aktif).
-2. Universal untuk SEMUA sheet dan SEMUA jenis data (tidak terkunci ke HPP/database tertentu).
-3. TANPA AUTO-VALUE: Nilai baru dapat diedit manual per sel atau diubah secara massal.
-4. Mendukung:
-   - Pilih kolom spesifik di range atau seluruh kolom.
-   - Edit manual per baris dengan input interaktif.
-   - Bulk set nilai baru (isi nilai serentak ke semua baris terpilih).
-   - Cari & Ganti (Find & Replace) teks/angka dalam range seleksi.
-   - Checkbox per baris & tombol Pilih Semua / Batal.
-   - Opsi warna latar Hijau Muda (#dcfce7) untuk sel yang diubah.
-5. Eksekusi strictly di sheet yang sedang aktif saat ini.
+1. Mode 1: Cari & Ganti Seluruh Sheet (Ctrl+F / Ctrl+H):
+   - Mencari dan mengganti data di SELURUH sheet yang sedang dibuka tanpa perlu blok manual.
+   - Pilihan Scope: Sheet Aktif yang Terbuka ATAU Seluruh Tab Sheet di Spreadsheet.
+   - Opsi: Exact Match (seluruh sel), Match Case, dan Highlight Hijau (#dcfce7).
+   - Pratinjau hasil pencarian interaktif dengan checkbox per sel dan input nilai baru yang bisa diedit.
+2. Mode 2: Range Seleksi Manual (Range yang Sedang Diblok):
+   - Membaca range yang sedang diblok di sheet aktif, edit manual per baris, bulk set, atau find & replace di range seleksi.
 ===============================================================================
 -->
 <div id="viewReplaceHpp" class="hidden space-y-3">
 
-  <!-- STEP 1: INFO FITUR -->
-  <section class="bg-white rounded-lg border border-slate-200 p-3.5 shadow-sm space-y-2">
-    <div class="flex items-start justify-between gap-2">
+  <!-- TAB NAVIGASI MODE 1 VS MODE 2 -->
+  <section class="bg-white rounded-lg border border-slate-200 p-2.5 shadow-sm space-y-2">
+    <div class="flex items-center justify-between border-b border-slate-200 pb-2">
       <div>
         <h2 class="text-xs font-bold uppercase tracking-wider text-emerald-800">
-          03. Replace Range Seleksi (Universal)
+          03. Replace Data &amp; Find (Ctrl+F / Ctrl+H)
         </h2>
-        <p class="text-[11px] text-slate-500">
-          Ganti nilai pada range yang diblok di sheet yang sedang dibuka. <b>Tanpa auto-value paksaan</b>, bisa diedit manual atau massal untuk semua jenis tabel &amp; sheet.
+        <p class="text-[10px] text-slate-500">
+          Cari &amp; ganti data di seluruh sheet yang terbuka atau pada range yang diblok.
         </p>
       </div>
-      <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 shrink-0">
-        Sheet Aktif
-      </span>
+      <div class="flex items-center gap-1 shrink-0">
+        <span class="text-[9px] font-mono bg-slate-100 text-slate-600 px-1 py-0.5 rounded border border-slate-200">Ctrl+F</span>
+        <span class="text-[9px] font-mono bg-slate-100 text-slate-600 px-1 py-0.5 rounded border border-slate-200">Ctrl+H</span>
+      </div>
     </div>
 
-    <!-- TOMBOL BACA RANGE SELEKSI -->
-    <button
-      id="btnReadGenericSelection"
-      type="button"
-      onclick="handleReadGenericSelection()"
-      class="w-full py-2.5 px-3 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-xs font-bold rounded shadow flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-    >
-      <span>🔍 1. Baca Range yang Sedang Diblok di Sheet Aktif</span>
-    </button>
+    <div class="flex gap-1 text-[11px] font-bold">
+      <button
+        id="tabBtnModeCtrlH"
+        type="button"
+        onclick="switchReplaceModeTab('ctrlh')"
+        class="flex-1 py-1.5 px-2 text-center rounded border-b-2 border-emerald-600 text-emerald-800 bg-emerald-50/60 transition-colors"
+      >
+        🔍 Cari &amp; Ganti Seluruh Sheet
+      </button>
+      <button
+        id="tabBtnModeRangeSel"
+        type="button"
+        onclick="switchReplaceModeTab('range')"
+        class="flex-1 py-1.5 px-2 text-center rounded border-b-2 border-transparent text-slate-500 hover:text-slate-800 transition-colors"
+      >
+        📐 Range yang Diblok
+      </button>
+    </div>
   </section>
 
-  <!-- HASIL BACA RANGE (MUNCUL SETELAH TOMBOL 1 DIKLIK) -->
-  <div id="genericRangeResultsBox" class="hidden space-y-3">
+  <!-- ===================================================================== -->
+  <!-- MODE 1: CARI & GANTI SELURUH SHEET (CTRL+F / CTRL+H)                  -->
+  <!-- ===================================================================== -->
+  <div id="panelCtrlHMode" class="space-y-3">
 
-    <!-- INFO RANGE TERCATAT -->
-    <section class="bg-white rounded-lg border border-slate-200 p-3 shadow-sm space-y-2">
-      <div class="flex items-center justify-between text-xs">
-        <div>
-          <span class="text-slate-500 text-[10px] uppercase font-bold tracking-wider">Sheet:</span>
-          <span id="lblGenSheetName" class="font-bold text-slate-800 ml-1">-</span>
-        </div>
-        <div class="text-right">
-          <span class="text-slate-500 text-[10px] uppercase font-bold tracking-wider">Range:</span>
-          <span id="lblGenRangeAddress" class="font-mono font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 ml-1">-</span>
+    <section class="bg-white rounded-lg border border-slate-200 p-3.5 shadow-sm space-y-3">
+      <div class="flex items-center justify-between">
+        <span class="text-[11px] font-bold text-slate-800 uppercase tracking-wide">
+          1. Parameter Pencarian &amp; Penggantian
+        </span>
+        <span class="text-[10px] text-emerald-700 font-semibold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+          Seluruh Sheet Terbuka
+        </span>
+      </div>
+
+      <!-- INPUT CARI (FIND) -->
+      <div class="space-y-1">
+        <label for="inputCtrlFFind" class="block text-[11px] font-bold text-slate-700 flex items-center justify-between">
+          <span>🔍 Cari Data (Find):</span>
+          <span class="text-[10px] text-slate-400 font-normal">Tekan Enter untuk cari</span>
+        </label>
+        <input
+          id="inputCtrlFFind"
+          type="text"
+          placeholder="Ketik teks / angka yang dicari (misal: Beras, 13814, Ayam)..."
+          onkeydown="if(event.key==='Enter') handleExecuteFindAll();"
+          class="w-full px-2.5 py-1.5 text-xs border border-slate-300 rounded font-semibold text-slate-800 bg-white focus:ring-1 focus:ring-emerald-500 shadow-sm"
+        />
+      </div>
+
+      <!-- INPUT GANTI DENGAN (REPLACE) -->
+      <div class="space-y-1">
+        <label for="inputCtrlHReplace" class="block text-[11px] font-bold text-emerald-800">
+          ⚡ Ganti Menjadi (Replace with):
+        </label>
+        <input
+          id="inputCtrlHReplace"
+          type="text"
+          placeholder="Ketik nilai pengganti (teks, angka, atau formula)..."
+          onkeydown="if(event.key==='Enter') handleExecuteFindAll();"
+          class="w-full px-2.5 py-1.5 text-xs border border-emerald-400 rounded font-bold text-emerald-900 bg-white focus:ring-1 focus:ring-emerald-500 shadow-sm"
+        />
+      </div>
+
+      <!-- PILIHAN SCOPE -->
+      <div class="space-y-1 pt-1 border-t border-slate-100">
+        <label class="block text-[10px] font-bold text-slate-600 uppercase">Lingkup Pencarian (Scope):</label>
+        <div class="grid grid-cols-2 gap-2 text-[11px]">
+          <label class="flex items-center gap-1.5 p-1.5 border border-slate-200 rounded cursor-pointer hover:bg-slate-50 bg-white">
+            <input type="radio" name="ctrlHScope" value="active" checked class="text-emerald-600 focus:ring-emerald-500">
+            <span class="font-semibold text-slate-700">Sheet Aktif Terbuka</span>
+          </label>
+          <label class="flex items-center gap-1.5 p-1.5 border border-slate-200 rounded cursor-pointer hover:bg-slate-50 bg-white">
+            <input type="radio" name="ctrlHScope" value="all_sheets" class="text-emerald-600 focus:ring-emerald-500">
+            <span class="text-slate-600">Semua Tab Sheet</span>
+          </label>
         </div>
       </div>
-      <div class="text-[11px] text-slate-600 flex items-center justify-between border-t border-slate-100 pt-1.5">
-        <span id="lblGenDimensions">-</span>
-        <span id="lblGenTotalCells" class="font-semibold text-slate-700">-</span>
+
+      <!-- OPSI PENCARIAN -->
+      <div class="space-y-1.5 pt-1 border-t border-slate-100 text-[11px]">
+        <label class="flex items-center gap-2 cursor-pointer select-none">
+          <input id="chkCtrlHExactMatch" type="checkbox" class="rounded text-emerald-600 focus:ring-emerald-500 w-3.5 h-3.5">
+          <span class="text-slate-700">Cocokkan Seluruh Sel (Exact Match)</span>
+        </label>
+        <label class="flex items-center gap-2 cursor-pointer select-none">
+          <input id="chkCtrlHMatchCase" type="checkbox" class="rounded text-emerald-600 focus:ring-emerald-500 w-3.5 h-3.5">
+          <span class="text-slate-700">Peka Huruf Besar / Kecil (Match Case)</span>
+        </label>
+        <label class="flex items-center gap-2 cursor-pointer select-none">
+          <input id="chkCtrlHHighlightGreen" type="checkbox" checked class="rounded text-emerald-600 focus:ring-emerald-500 w-3.5 h-3.5">
+          <span class="text-slate-700 font-semibold text-emerald-800">Beri warna Hijau Muda (#dcfce7) pada sel yang diubah</span>
+        </label>
+      </div>
+
+      <!-- TOMBOL CARI & GANTI LANGSUNG -->
+      <div class="grid grid-cols-2 gap-2 pt-1">
+        <button
+          id="btnCtrlHFindAll"
+          type="button"
+          onclick="handleExecuteFindAll()"
+          class="py-2 px-2.5 bg-slate-800 hover:bg-slate-900 active:bg-black text-white text-xs font-bold rounded shadow flex items-center justify-center gap-1 transition-colors cursor-pointer"
+        >
+          <span>🔍 1. Cari Data (Find)</span>
+        </button>
+        <button
+          id="btnCtrlHQuickReplaceAll"
+          type="button"
+          onclick="handleExecuteQuickReplaceAllDirect()"
+          class="py-2 px-2.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-xs font-bold rounded shadow flex items-center justify-center gap-1 transition-colors cursor-pointer"
+        >
+          <span>⚡ Ganti Semua Langsung</span>
+        </button>
       </div>
     </section>
 
-    <!-- STEP 2: PENGATURAN PENGGANTIAN NILAI -->
-    <section class="bg-white rounded-lg border border-slate-200 p-3.5 shadow-sm space-y-3">
-      <div class="flex items-center justify-between">
-        <h3 class="text-xs font-bold text-slate-800 uppercase tracking-wide">
-          2. Pengaturan Nilai Pengganti
-        </h3>
-        <span class="text-[10px] text-slate-500">Edit Manual / Massal</span>
-      </div>
+    <!-- HASIL PENCARIAN CTRL+F & CTRL+H -->
+    <div id="ctrlHResultsBox" class="hidden space-y-2.5">
+      <section class="bg-white rounded-lg border border-slate-200 p-3 shadow-sm space-y-2">
+        <div class="flex items-center justify-between text-xs pb-1.5 border-b border-slate-100">
+          <div>
+            <span class="font-bold text-slate-800" id="lblCtrlHTotalMatches">0 Hasil Ditemukan</span>
+            <div class="text-[10px] text-slate-500" id="lblCtrlHSearchContext">-</div>
+          </div>
+          <div class="flex items-center gap-1.5 text-[10px]">
+            <button type="button" onclick="handleToggleAllCtrlHMatches(true)" class="text-emerald-700 hover:underline font-bold">Pilih Semua</button>
+            <span class="text-slate-300">|</span>
+            <button type="button" onclick="handleToggleAllCtrlHMatches(false)" class="text-slate-500 hover:underline font-bold">Batal</button>
+          </div>
+        </div>
 
-      <!-- FILTER TARGET KOLOM -->
-      <div>
-        <label for="selectGenTargetCol" class="block text-[11px] font-bold text-slate-700 mb-1">
-          Pilih Kolom yang Ingin Di-Replace:
-        </label>
-        <select
-          id="selectGenTargetCol"
-          onchange="handleGenTargetColChange(this.value)"
-          class="w-full text-xs font-semibold border border-slate-300 rounded px-2.5 py-1.5 bg-white text-slate-800 focus:ring-1 focus:ring-emerald-500 cursor-pointer shadow-sm"
+        <!-- DAFTAR KECOCOKAN SEL -->
+        <div id="ctrlHMatchesListContainer" class="max-h-72 overflow-y-auto border border-slate-200 rounded divide-y divide-slate-100 text-xs bg-white">
+          <!-- Render hasil kecocokan -->
+        </div>
+
+        <!-- TOMBOL EKSEKUSI GANTI ITEM TERPILIH -->
+        <button
+          id="btnCtrlHExecuteChecked"
+          type="button"
+          onclick="handleExecuteReplaceCheckedMatches()"
+          class="w-full py-2.5 px-3 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-xs font-bold rounded shadow flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
         >
-          <option value="ALL">Semua Kolom di Range Seleksi</option>
-        </select>
+          <span>⚡ TERAPKAN GANTI PADA SEL TERPILIH (WARNA HIJAU)</span>
+        </button>
+      </section>
+    </div>
+
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- MODE 2: RANGE SELEKSI MANUAL (RANGE YANG SEDANG DIBLOK DI SHEET)     -->
+  <!-- ===================================================================== -->
+  <div id="panelRangeSelMode" class="hidden space-y-3">
+
+    <!-- STEP 1: INFO FITUR RANGE DIBLOK -->
+    <section class="bg-white rounded-lg border border-slate-200 p-3.5 shadow-sm space-y-2">
+      <div class="flex items-start justify-between gap-2">
+        <div>
+          <h3 class="text-xs font-bold uppercase tracking-wider text-emerald-800">
+            Range yang Sedang Diblok
+          </h3>
+          <p class="text-[11px] text-slate-500">
+            Blok range tertentu di sheet aktif, lalu sesuaikan nilainya tanpa auto-value paksaan.
+          </p>
+        </div>
+        <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 shrink-0">
+          Sheet Aktif
+        </span>
       </div>
 
-      <!-- QUICK TOOLS ACCORDION: BULK SET & FIND/REPLACE -->
-      <details class="border border-slate-200 rounded-md p-2 bg-slate-50/70 text-xs">
-        <summary class="font-bold text-slate-700 cursor-pointer hover:text-emerald-700 select-none flex items-center justify-between">
-          <span>🛠️ Alat Bantu Cepat (Isi Serentak / Cari &amp; Ganti)</span>
-          <span class="text-[10px] text-slate-400 font-normal">Klik buka</span>
-        </summary>
-        
-        <div class="mt-2.5 space-y-2.5 pt-2 border-t border-slate-200">
-          <!-- TOOL 1: BULK SET VALUE -->
-          <div class="space-y-1">
-            <label class="block text-[10px] font-bold text-slate-600">
-              A. Isi Nilai Serentak ke Semua Baris Terpilih:
-            </label>
-            <div class="flex gap-1.5">
-              <input
-                id="inputGenBulkValue"
-                type="text"
-                placeholder="Ketik nilai baru (angka/teks)..."
-                class="flex-1 px-2 py-1 text-xs border border-slate-300 rounded bg-white focus:ring-1 focus:ring-emerald-500"
-              />
+      <!-- TOMBOL BACA RANGE SELEKSI -->
+      <button
+        id="btnReadGenericSelection"
+        type="button"
+        onclick="handleReadGenericSelection()"
+        class="w-full py-2.5 px-3 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-xs font-bold rounded shadow flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+      >
+        <span>🔍 1. Baca Range yang Sedang Diblok di Sheet Aktif</span>
+      </button>
+    </section>
+
+    <!-- HASIL BACA RANGE -->
+    <div id="genericRangeResultsBox" class="hidden space-y-3">
+      <!-- INFO RANGE TERCATAT -->
+      <section class="bg-white rounded-lg border border-slate-200 p-3 shadow-sm space-y-2">
+        <div class="flex items-center justify-between text-xs">
+          <div>
+            <span class="text-slate-500 text-[10px] uppercase font-bold tracking-wider">Sheet:</span>
+            <span id="lblGenSheetName" class="font-bold text-slate-800 ml-1">-</span>
+          </div>
+          <div class="text-right">
+            <span class="text-slate-500 text-[10px] uppercase font-bold tracking-wider">Range:</span>
+            <span id="lblGenRangeAddress" class="font-mono font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 ml-1">-</span>
+          </div>
+        </div>
+        <div class="text-[11px] text-slate-600 flex items-center justify-between border-t border-slate-100 pt-1.5">
+          <span id="lblGenDimensions">-</span>
+          <span id="lblGenTotalCells" class="font-semibold text-slate-700">-</span>
+        </div>
+      </section>
+
+      <!-- PENGATURAN NILAI RANGE -->
+      <section class="bg-white rounded-lg border border-slate-200 p-3.5 shadow-sm space-y-3">
+        <div>
+          <label for="selectGenTargetCol" class="block text-[11px] font-bold text-slate-700 mb-1">
+            Pilih Kolom yang Ingin Di-Replace:
+          </label>
+          <select
+            id="selectGenTargetCol"
+            onchange="handleGenTargetColChange(this.value)"
+            class="w-full text-xs font-semibold border border-slate-300 rounded px-2.5 py-1.5 bg-white text-slate-800 focus:ring-1 focus:ring-emerald-500 cursor-pointer shadow-sm"
+          >
+            <option value="ALL">Semua Kolom di Range Seleksi</option>
+          </select>
+        </div>
+
+        <!-- QUICK BULK SET TOOLS -->
+        <details class="border border-slate-200 rounded-md p-2 bg-slate-50/70 text-xs">
+          <summary class="font-bold text-slate-700 cursor-pointer hover:text-emerald-700 select-none flex items-center justify-between">
+            <span>🛠️ Alat Bantu Cepat (Isi Serentak / Cari &amp; Ganti di Range)</span>
+            <span class="text-[10px] text-slate-400 font-normal">Klik buka</span>
+          </summary>
+          
+          <div class="mt-2.5 space-y-2.5 pt-2 border-t border-slate-200">
+            <div class="space-y-1">
+              <label class="block text-[10px] font-bold text-slate-600">A. Isi Nilai Serentak ke Semua Baris Terpilih:</label>
+              <div class="flex gap-1.5">
+                <input
+                  id="inputGenBulkValue"
+                  type="text"
+                  placeholder="Ketik nilai baru..."
+                  class="flex-1 px-2 py-1 text-xs border border-slate-300 rounded bg-white focus:ring-1 focus:ring-emerald-500"
+                />
+                <button
+                  type="button"
+                  onclick="handleApplyGenBulkValue()"
+                  class="px-2.5 py-1 bg-slate-700 hover:bg-slate-800 text-white text-[11px] font-bold rounded shadow-sm shrink-0"
+                >
+                  Terapkan
+                </button>
+              </div>
+            </div>
+
+            <div class="space-y-1">
+              <label class="block text-[10px] font-bold text-slate-600">B. Cari &amp; Ganti (Find &amp; Replace) di Range:</label>
+              <div class="grid grid-cols-2 gap-1.5">
+                <input
+                  id="inputGenFindText"
+                  type="text"
+                  placeholder="Teks dicari..."
+                  class="px-2 py-1 text-xs border border-slate-300 rounded bg-white"
+                />
+                <input
+                  id="inputGenReplaceText"
+                  type="text"
+                  placeholder="Ganti jadi..."
+                  class="px-2 py-1 text-xs border border-slate-300 rounded bg-white"
+                />
+              </div>
               <button
                 type="button"
-                onclick="handleApplyGenBulkValue()"
-                class="px-2.5 py-1 bg-slate-700 hover:bg-slate-800 text-white text-[11px] font-bold rounded shadow-sm shrink-0"
+                onclick="handleApplyGenFindReplace()"
+                class="w-full py-1 bg-slate-600 hover:bg-slate-700 text-white text-[11px] font-bold rounded shadow-sm"
               >
-                Terapkan
+                Ganti di Range
               </button>
             </div>
           </div>
+        </details>
 
-          <!-- TOOL 2: FIND & REPLACE -->
-          <div class="space-y-1">
-            <label class="block text-[10px] font-bold text-slate-600">
-              B. Cari &amp; Ganti (Find &amp; Replace) di Kolom Terpilih:
-            </label>
-            <div class="grid grid-cols-2 gap-1.5">
-              <input
-                id="inputGenFindText"
-                type="text"
-                placeholder="Teks yang dicari..."
-                class="px-2 py-1 text-xs border border-slate-300 rounded bg-white focus:ring-1 focus:ring-emerald-500"
-              />
-              <input
-                id="inputGenReplaceText"
-                type="text"
-                placeholder="Ganti menjadi..."
-                class="px-2 py-1 text-xs border border-slate-300 rounded bg-white focus:ring-1 focus:ring-emerald-500"
-              />
+        <!-- TABEL LIST -->
+        <div class="space-y-1.5">
+          <div class="flex items-center justify-between text-[11px] bg-slate-100 px-2 py-1.5 rounded border border-slate-200">
+            <span id="lblGenCheckedCount" class="font-bold text-slate-700">0 Baris Terpilih</span>
+            <div class="flex items-center gap-2 text-[10px]">
+              <button type="button" onclick="handleToggleAllGenCheckboxes(true)" class="text-emerald-700 hover:underline font-bold">Pilih Semua</button>
+              <span class="text-slate-300">|</span>
+              <button type="button" onclick="handleToggleAllGenCheckboxes(false)" class="text-slate-500 hover:underline font-bold">Batal</button>
+              <span class="text-slate-300">|</span>
+              <button type="button" onclick="handleResetAllGenValues()" class="text-rose-600 hover:underline font-semibold">Reset</button>
             </div>
-            <button
-              type="button"
-              onclick="handleApplyGenFindReplace()"
-              class="w-full py-1 bg-slate-600 hover:bg-slate-700 text-white text-[11px] font-bold rounded shadow-sm"
-            >
-              Ganti Semua Teks Cocok
-            </button>
+          </div>
+
+          <div
+            id="genCellsListContainer"
+            class="max-h-72 overflow-y-auto border border-slate-200 rounded divide-y divide-slate-100 bg-white"
+          >
+            <!-- Diisi dinamis -->
           </div>
         </div>
-      </details>
+      </section>
 
-      <!-- TABEL REKAP & EDIT MANUAL PER BARIS -->
-      <div class="space-y-1.5">
-        <div class="flex items-center justify-between text-[11px] bg-slate-100 px-2 py-1.5 rounded border border-slate-200">
-          <div class="flex items-center gap-1.5 font-bold text-slate-700">
-            <span id="lblGenCheckedCount">0 Baris Terpilih</span>
-          </div>
-          <div class="flex items-center gap-2 text-[10px]">
-            <button
-              type="button"
-              onclick="handleToggleAllGenCheckboxes(true)"
-              class="text-emerald-700 hover:underline font-bold"
-            >
-              Pilih Semua
-            </button>
-            <span class="text-slate-300">|</span>
-            <button
-              type="button"
-              onclick="handleToggleAllGenCheckboxes(false)"
-              class="text-slate-500 hover:underline font-bold"
-            >
-              Batal
-            </button>
-            <span class="text-slate-300">|</span>
-            <button
-              type="button"
-              onclick="handleResetAllGenValues()"
-              class="text-rose-600 hover:underline font-semibold"
-              title="Kembalikan semua nilai ke nilai awal saat dibaca"
-            >
-              Reset Nilai
-            </button>
-          </div>
-        </div>
+      <!-- EKSEKUSI RANGE SELEKSI -->
+      <section class="bg-white rounded-lg border border-slate-200 p-3.5 shadow-sm space-y-3">
+        <label class="flex items-center gap-2 cursor-pointer text-xs select-none">
+          <input
+            id="chkGenApplyGreen"
+            type="checkbox"
+            checked
+            class="rounded text-emerald-600 focus:ring-emerald-500 w-4 h-4"
+          />
+          <span class="text-slate-700 font-medium">
+            Beri warna <b class="text-emerald-800 bg-emerald-100 px-1 py-0.5 rounded border border-emerald-300">Hijau Muda (#dcfce7)</b> pada sel yang diubah
+          </span>
+        </label>
 
-        <!-- LIST CONTAINER -->
-        <div
-          id="genCellsListContainer"
-          class="max-h-72 overflow-y-auto border border-slate-200 rounded divide-y divide-slate-100 bg-white"
+        <button
+          id="btnExecuteGenericReplace"
+          type="button"
+          onclick="handleExecuteGenericReplace()"
+          class="w-full py-2.5 px-3 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-xs font-bold rounded shadow flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
         >
-          <!-- Baris sel akan dirender secara dinamis di sini -->
-        </div>
-      </div>
-    </section>
-
-    <!-- STEP 3: OPSI WARNA & EKSEKUSI -->
-    <section class="bg-white rounded-lg border border-slate-200 p-3.5 shadow-sm space-y-3">
-      <!-- CHECKBOX HIGHLIGHT WARNA HIJAU -->
-      <label class="flex items-center gap-2 cursor-pointer text-xs select-none">
-        <input
-          id="chkGenApplyGreen"
-          type="checkbox"
-          checked
-          class="rounded text-emerald-600 focus:ring-emerald-500 w-4 h-4"
-        />
-        <span class="text-slate-700 font-medium">
-          Beri latar belakang warna <b class="text-emerald-800 bg-emerald-100 px-1 py-0.5 rounded border border-emerald-300">Hijau Muda (#dcfce7)</b> pada sel yang diubah
-        </span>
-      </label>
-
-      <!-- TOMBOL EKSEKUSI REPLACE -->
-      <button
-        id="btnExecuteGenericReplace"
-        type="button"
-        onclick="handleExecuteGenericReplace()"
-        class="w-full py-2.5 px-3 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-xs font-bold rounded shadow flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-      >
-        <span>⚡ 2. TERAPKAN PERUBAHAN KE SHEET AKTIF</span>
-      </button>
-    </section>
+          <span>⚡ 2. TERAPKAN PERUBAHAN KE SHEET AKTIF</span>
+        </button>
+      </section>
+    </div>
 
   </div>
 
@@ -225,18 +355,348 @@ Fitur:
 
 <script>
 (function() {
-  // State untuk Range Seleksi Universal
+  // State untuk Tab Mode
+  var activeReplaceTab = "ctrlh"; // "ctrlh" atau "range"
+
+  // State untuk Ctrl+F & Ctrl+H Mode
+  var currentCtrlHMatches = []; // Array match objects
+  var lastSearchParams = null;
+
+  // State untuk Range Seleksi
   var currentSelection = null;
-  var selectionRowsList = []; // Array { id, row, col, cellAddress, oldValue, currentValue, newValue, isChecked, isModified }
-  var columnOptions = []; // Array { colIdx, colLetter, headerName }
+  var selectionRowsList = [];
+  var columnOptions = [];
 
   window.initReplaceHppView = function() {
-    // Dipanggil saat switch ke menu ini
+    // Otomatis fokus ke input pencarian
+    setTimeout(function() {
+      var fInput = document.getElementById("inputCtrlFFind");
+      if (fInput && activeReplaceTab === "ctrlh") {
+        fInput.focus();
+      }
+    }, 200);
   };
 
   /**
-   * 1. Membaca range yang sedang diblok di sheet aktif
+   * Switch antara Tab 1 (Ctrl+F/H) dan Tab 2 (Range yang Diblok)
    */
+  window.switchReplaceModeTab = function(tab) {
+    activeReplaceTab = tab;
+    var btnCtrlH = document.getElementById("tabBtnModeCtrlH");
+    var btnRange = document.getElementById("tabBtnModeRangeSel");
+    var panelCtrlH = document.getElementById("panelCtrlHMode");
+    var panelRange = document.getElementById("panelRangeSelMode");
+
+    if (tab === "ctrlh") {
+      if (btnCtrlH) {
+        btnCtrlH.className = "flex-1 py-1.5 px-2 text-center rounded border-b-2 border-emerald-600 text-emerald-800 bg-emerald-50/60 font-bold transition-colors";
+      }
+      if (btnRange) {
+        btnRange.className = "flex-1 py-1.5 px-2 text-center rounded border-b-2 border-transparent text-slate-500 hover:text-slate-800 font-bold transition-colors";
+      }
+      if (panelCtrlH) panelCtrlH.classList.remove("hidden");
+      if (panelRange) panelRange.classList.add("hidden");
+      var fInput = document.getElementById("inputCtrlFFind");
+      if (fInput) fInput.focus();
+    } else {
+      if (btnRange) {
+        btnRange.className = "flex-1 py-1.5 px-2 text-center rounded border-b-2 border-emerald-600 text-emerald-800 bg-emerald-50/60 font-bold transition-colors";
+      }
+      if (btnCtrlH) {
+        btnCtrlH.className = "flex-1 py-1.5 px-2 text-center rounded border-b-2 border-transparent text-slate-500 hover:text-slate-800 font-bold transition-colors";
+      }
+      if (panelRange) panelRange.classList.remove("hidden");
+      if (panelCtrlH) panelCtrlH.classList.add("hidden");
+    }
+  };
+
+  // =========================================================================
+  // LOGIKA 1: CTRL+F & CTRL+H (FIND & REPLACE DI SELURUH SHEET TERBUKA)
+  // =========================================================================
+
+  function getCtrlHSearchParams() {
+    var findInput = document.getElementById("inputCtrlFFind");
+    var repInput = document.getElementById("inputCtrlHReplace");
+    var scopeRadio = document.querySelector('input[name="ctrlHScope"]:checked');
+    var chkExact = document.getElementById("chkCtrlHExactMatch");
+    var chkCase = document.getElementById("chkCtrlHMatchCase");
+    var chkGreen = document.getElementById("chkCtrlHHighlightGreen");
+
+    var searchText = findInput ? findInput.value.trim() : "";
+    var replaceText = repInput ? repInput.value : "";
+    var scope = scopeRadio ? scopeRadio.value : "active";
+    var matchEntireCell = chkExact ? chkExact.checked : false;
+    var matchCase = chkCase ? chkCase.checked : false;
+    var applyHighlight = chkGreen ? chkGreen.checked : true;
+
+    return {
+      searchText: searchText,
+      replaceText: replaceText,
+      scope: scope,
+      matchEntireCell: matchEntireCell,
+      matchCase: matchCase,
+      applyHighlight: applyHighlight,
+      highlightColor: applyHighlight ? "#dcfce7" : ""
+    };
+  }
+
+  window.handleExecuteFindAll = function() {
+    var params = getCtrlHSearchParams();
+    if (!params.searchText) {
+      showAuditStatus("warning", "Ketikkan teks / angka yang ingin dicari terlebih dahulu.");
+      var fInput = document.getElementById("inputCtrlFFind");
+      if (fInput) fInput.focus();
+      return;
+    }
+
+    lastSearchParams = params;
+    var btn = document.getElementById("btnCtrlHFindAll");
+    btn.disabled = true;
+    btn.innerHTML = '<span class="animate-spin inline-block">⏳</span> Mencari di Sheet...';
+
+    if (hasGoogleScriptRun()) {
+      google.script.run
+        .withSuccessHandler(function(res) {
+          btn.disabled = false;
+          btn.innerHTML = '<span>🔍 1. Cari Data (Find)</span>';
+          processCtrlHSearchResults(res);
+        })
+        .withFailureHandler(function(err) {
+          btn.disabled = false;
+          btn.innerHTML = '<span>🔍 1. Cari Data (Find)</span>';
+          showAuditStatus("error", "Gagal mencari data: " + err.message);
+        })
+        .findDataInSheet(params);
+    } else {
+      setTimeout(function() {
+        btn.disabled = false;
+        btn.innerHTML = '<span>🔍 1. Cari Data (Find)</span>';
+        // Demo mock data
+        processCtrlHSearchResults({
+          success: true,
+          activeSheetName: "Sheet1 (Demo)",
+          scope: params.scope,
+          totalMatches: 4,
+          searchText: params.searchText,
+          replaceText: params.replaceText,
+          matches: [
+            { sheetName: "Sheet1", sheetRow: 2, sheetCol: 2, cellAddress: "B2", oldValue: params.searchText, displayValue: params.searchText, newValue: params.replaceText || params.searchText, rowContext: "Beras", columnHeader: "Bahan", isChecked: true },
+            { sheetName: "Sheet1", sheetRow: 5, sheetCol: 2, cellAddress: "B5", oldValue: params.searchText, displayValue: params.searchText, newValue: params.replaceText || params.searchText, rowContext: "Kecap", columnHeader: "Bahan", isChecked: true },
+            { sheetName: "Sheet1", sheetRow: 8, sheetCol: 5, cellAddress: "E8", oldValue: 13814, displayValue: "Rp 13.814", newValue: params.replaceText || 13814, rowContext: "Ayam Charsiu", columnHeader: "Harga", isChecked: true },
+            { sheetName: "Sheet1", sheetRow: 12, sheetCol: 5, cellAddress: "E12", oldValue: 13814, displayValue: "Rp 13.814", newValue: params.replaceText || 13814, rowContext: "Ayam Promo", columnHeader: "Harga", isChecked: true }
+          ]
+        });
+      }, 500);
+    }
+  };
+
+  function processCtrlHSearchResults(res) {
+    if (!res || !res.matches) return;
+    currentCtrlHMatches = res.matches;
+
+    var box = document.getElementById("ctrlHResultsBox");
+    if (box) box.classList.remove("hidden");
+
+    var lblTotal = document.getElementById("lblCtrlHTotalMatches");
+    var lblContext = document.getElementById("lblCtrlHSearchContext");
+
+    if (lblTotal) {
+      lblTotal.textContent = res.totalMatches + " Hasil Ditemukan";
+    }
+    if (lblContext) {
+      var scopeText = res.scope === "all_sheets" ? "Seluruh Tab Sheet" : ("Sheet '" + res.activeSheetName + "'");
+      lblContext.textContent = "Pencarian '" + res.searchText + "' pada " + scopeText;
+    }
+
+    renderCtrlHMatchesList();
+
+    if (res.totalMatches === 0) {
+      showAuditStatus("info", "Tidak ditemukan sel yang cocok dengan pencarian '" + res.searchText + "'.");
+    } else {
+      showAuditStatus("success", "Ditemukan " + res.totalMatches + " sel yang cocok. Periksa hasil sebelum me-replace.");
+    }
+  }
+
+  function renderCtrlHMatchesList() {
+    var container = document.getElementById("ctrlHMatchesListContainer");
+    if (!container) return;
+
+    if (currentCtrlHMatches.length === 0) {
+      container.innerHTML = '<div class="p-3 text-center text-slate-400 text-xs">Tidak ada hasil pencarian.</div>';
+      return;
+    }
+
+    var html = currentCtrlHMatches.map(function(item, idx) {
+      var isChecked = item.isChecked !== false ? "checked" : "";
+      var sheetBadge = item.sheetName ? '<span class="text-[9px] bg-slate-100 text-slate-600 px-1 py-0.5 rounded">' + item.sheetName + '</span>' : '';
+
+      return '<div class="p-2 bg-white hover:bg-slate-50 flex items-start justify-between gap-2 text-xs border-b border-slate-100 transition-colors" id="ctrlHMatch_' + idx + '">' +
+        '<div class="flex items-start gap-2 flex-1 min-w-0">' +
+          '<input type="checkbox" ' + isChecked + ' onchange="handleToggleCtrlHRow(' + idx + ', this.checked)" class="rounded text-emerald-600 focus:ring-emerald-500 shrink-0 w-3.5 h-3.5 mt-0.5 cursor-pointer">' +
+          '<div class="flex-1 min-w-0 space-y-0.5">' +
+            '<div class="flex items-center gap-1.5 flex-wrap">' +
+              '<span class="font-mono font-bold text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded text-[10px] border border-emerald-200">' + item.cellAddress + '</span>' +
+              sheetBadge +
+              '<span class="font-semibold text-slate-800 text-[11px] truncate">' + escapeHtml(item.rowContext || "") + '</span>' +
+            '</div>' +
+            '<div class="text-[10px] text-slate-500">' +
+              'Kolom: <b class="text-slate-700">' + escapeHtml(item.columnHeader || "") + '</b> • Nilai Saat Ini: <span class="font-mono text-slate-700">' + escapeHtml(String(item.displayValue || item.oldValue)) + '</span>' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+        '<div class="shrink-0 text-right space-y-1">' +
+          '<input type="text" value="' + escapeHtml(String(item.newValue !== undefined ? item.newValue : "")) + '" ' +
+            'oninput="handleCtrlHRowValueChange(' + idx + ', this.value)" ' +
+            'placeholder="Nilai baru..." ' +
+            'class="w-28 px-1.5 py-0.5 text-xs font-bold text-emerald-800 bg-emerald-50/50 border border-emerald-300 rounded focus:ring-1 focus:ring-emerald-500 text-right">' +
+        '</div>' +
+      '</div>';
+    }).join("");
+
+    container.innerHTML = html;
+    updateCtrlHExecuteButtonText();
+  }
+
+  window.handleToggleCtrlHRow = function(idx, checked) {
+    if (currentCtrlHMatches[idx]) {
+      currentCtrlHMatches[idx].isChecked = checked;
+    }
+    updateCtrlHExecuteButtonText();
+  };
+
+  window.handleToggleAllCtrlHMatches = function(checked) {
+    currentCtrlHMatches.forEach(function(m) {
+      m.isChecked = checked;
+    });
+    renderCtrlHMatchesList();
+  };
+
+  window.handleCtrlHRowValueChange = function(idx, val) {
+    if (currentCtrlHMatches[idx]) {
+      currentCtrlHMatches[idx].newValue = val;
+    }
+  };
+
+  function updateCtrlHExecuteButtonText() {
+    var btn = document.getElementById("btnCtrlHExecuteChecked");
+    if (!btn) return;
+    var checkedCount = currentCtrlHMatches.filter(function(m) { return m.isChecked !== false; }).length;
+    btn.innerHTML = '<span>⚡ TERAPKAN GANTI PADA ' + checkedCount + ' SEL TERPILIH (WARNA HIJAU)</span>';
+  }
+
+  /**
+   * Eksekusi Ganti pada sel yang dicentang
+   */
+  window.handleExecuteReplaceCheckedMatches = function() {
+    var checkedMatches = currentCtrlHMatches.filter(function(m) { return m.isChecked !== false; });
+    if (checkedMatches.length === 0) {
+      showAuditStatus("warning", "Pilih minimal 1 sel yang dicentang untuk di-replace.");
+      return;
+    }
+
+    var params = getCtrlHSearchParams();
+    var btn = document.getElementById("btnCtrlHExecuteChecked");
+    btn.disabled = true;
+    btn.innerHTML = '<span class="animate-spin inline-block">⏳</span> Mengganti ' + checkedMatches.length + ' Sel di Sheet...';
+
+    var payload = {
+      applyHighlight: params.applyHighlight,
+      highlightColor: params.highlightColor,
+      selectedMatches: checkedMatches
+    };
+
+    if (hasGoogleScriptRun()) {
+      google.script.run
+        .withSuccessHandler(function(res) {
+          btn.disabled = false;
+          updateCtrlHExecuteButtonText();
+          showAuditStatus("success", "BERHASIL! " + res.totalUpdated + " sel telah di-replace dan diberi warna HIJAU MUDA di sheet!");
+          // Kosongkan atau perbarui list
+          currentCtrlHMatches = [];
+          var box = document.getElementById("ctrlHResultsBox");
+          if (box) box.classList.add("hidden");
+        })
+        .withFailureHandler(function(err) {
+          btn.disabled = false;
+          updateCtrlHExecuteButtonText();
+          showAuditStatus("error", "Gagal me-replace: " + err.message);
+        })
+        .replaceDataInSheet(payload);
+    } else {
+      setTimeout(function() {
+        btn.disabled = false;
+        updateCtrlHExecuteButtonText();
+        showAuditStatus("success", "(Demo) Berhasil me-replace " + checkedMatches.length + " sel di sheet dengan warna hijau muda!");
+        currentCtrlHMatches = [];
+        var box = document.getElementById("ctrlHResultsBox");
+        if (box) box.classList.add("hidden");
+      }, 700);
+    }
+  };
+
+  /**
+   * Eksekusi Ganti Semua Langsung (1-Klik)
+   */
+  window.handleExecuteQuickReplaceAllDirect = function() {
+    var params = getCtrlHSearchParams();
+    if (!params.searchText) {
+      showAuditStatus("warning", "Ketikkan teks / angka yang ingin dicari terlebih dahulu.");
+      return;
+    }
+
+    var btn = document.getElementById("btnCtrlHQuickReplaceAll");
+    btn.disabled = true;
+    btn.innerHTML = '<span class="animate-spin inline-block">⏳</span> Mencari &amp; Mengganti...';
+
+    // Cari dulu, lalu langsung replace semua kecocokan
+    if (hasGoogleScriptRun()) {
+      google.script.run
+        .withSuccessHandler(function(findRes) {
+          if (!findRes || !findRes.matches || findRes.matches.length === 0) {
+            btn.disabled = false;
+            btn.innerHTML = '<span>⚡ Ganti Semua Langsung</span>';
+            showAuditStatus("info", "Tidak ditemukan sel yang cocok dengan '" + params.searchText + "'.");
+            return;
+          }
+
+          var payload = {
+            applyHighlight: params.applyHighlight,
+            highlightColor: params.highlightColor,
+            selectedMatches: findRes.matches
+          };
+
+          google.script.run
+            .withSuccessHandler(function(repRes) {
+              btn.disabled = false;
+              btn.innerHTML = '<span>⚡ Ganti Semua Langsung</span>';
+              showAuditStatus("success", "BERHASIL! Mengganti " + repRes.totalUpdated + " sel di sheet dengan warna HIJAU MUDA!");
+            })
+            .withFailureHandler(function(err) {
+              btn.disabled = false;
+              btn.innerHTML = '<span>⚡ Ganti Semua Langsung</span>';
+              showAuditStatus("error", "Gagal replace: " + err.message);
+            })
+            .replaceDataInSheet(payload);
+        })
+        .withFailureHandler(function(err) {
+          btn.disabled = false;
+          btn.innerHTML = '<span>⚡ Ganti Semua Langsung</span>';
+          showAuditStatus("error", "Gagal mencari: " + err.message);
+        })
+        .findDataInSheet(params);
+    } else {
+      setTimeout(function() {
+        btn.disabled = false;
+        btn.innerHTML = '<span>⚡ Ganti Semua Langsung</span>';
+        showAuditStatus("success", "(Demo) Berhasil me-replace semua sel yang cocok di sheet dengan warna hijau muda!");
+      }, 700);
+    }
+  };
+
+  // =========================================================================
+  // LOGIKA 2: RANGE SELEKSI MANUAL (RANGE YANG SEDANG DIBLOK DI SHEET)
+  // =========================================================================
+
   window.handleReadGenericSelection = function() {
     var btn = document.getElementById("btnReadGenericSelection");
     btn.disabled = true;
@@ -263,7 +723,6 @@ Fitur:
       setTimeout(function() {
         btn.disabled = false;
         btn.innerHTML = '<span>🔍 1. Baca Ulang Range yang Sedang Diblok</span>';
-        // Mock data untuk demo browser
         processGenericSelectionResult({
           sheetName: "Sheet1 (Demo)",
           address: "B2:E6",
@@ -290,9 +749,6 @@ Fitur:
     }
   };
 
-  /**
-   * Mengolah hasil pembacaan range dari server
-   */
   function processGenericSelectionResult(sel) {
     currentSelection = sel;
     selectionRowsList = [];
@@ -303,7 +759,6 @@ Fitur:
     var numRows = Number(sel.rowCount);
     var numCols = Number(sel.columnCount);
 
-    // Siapkan daftar kolom
     var firstRowVals = sel.values[0] || [];
     for (var c = 0; c < numCols; c++) {
       var colLetter = colNumberToLetter(startCol + c);
@@ -318,7 +773,6 @@ Fitur:
       });
     }
 
-    // Bangun daftar sel/baris
     var idCounter = 0;
     for (var r = 0; r < numRows; r++) {
       for (var c = 0; c < numCols; c++) {
@@ -344,7 +798,6 @@ Fitur:
       }
     }
 
-    // Update Header UI
     var box = document.getElementById("genericRangeResultsBox");
     if (box) box.classList.remove("hidden");
 
@@ -353,7 +806,6 @@ Fitur:
     document.getElementById("lblGenDimensions").textContent = numRows + " Baris × " + numCols + " Kolom";
     document.getElementById("lblGenTotalCells").textContent = "Total: " + selectionRowsList.length + " Sel";
 
-    // Populate dropdown target kolom
     var selectCol = document.getElementById("selectGenTargetCol");
     if (selectCol) {
       selectCol.innerHTML = '<option value="ALL">Semua Kolom di Range (' + numCols + ' Kolom)</option>';
@@ -363,7 +815,6 @@ Fitur:
         op.textContent = opt.label;
         selectCol.appendChild(op);
       });
-      // Jika lebih dari 1 kolom, default ke kolom terakhir atau kolom ALL
       selectCol.value = "ALL";
     }
 
@@ -371,9 +822,6 @@ Fitur:
     showAuditStatus("info", "Berhasil membaca range " + sel.address + " (" + selectionRowsList.length + " sel). Silakan sesuaikan nilai pengganti.");
   }
 
-  /**
-   * Filter tampilan berdasarkan kolom yang dipilih
-   */
   window.handleGenTargetColChange = function(colVal) {
     renderGenericCellsList();
   };
@@ -391,9 +839,6 @@ Fitur:
     });
   }
 
-  /**
-   * Render daftar baris sel interaktif
-   */
   function renderGenericCellsList() {
     var container = document.getElementById("genCellsListContainer");
     if (!container) return;
@@ -500,9 +945,6 @@ Fitur:
     showAuditStatus("info", "Semua nilai pada tampilan telah dikembalikan ke nilai asli.");
   };
 
-  /**
-   * Bulk Set Nilai Baru
-   */
   window.handleApplyGenBulkValue = function() {
     var input = document.getElementById("inputGenBulkValue");
     if (!input || input.value === "") {
@@ -525,9 +967,6 @@ Fitur:
     showAuditStatus("success", "Berhasil menerapkan nilai '" + val + "' ke " + count + " sel terpilih!");
   };
 
-  /**
-   * Find & Replace
-   */
   window.handleApplyGenFindReplace = function() {
     var findInput = document.getElementById("inputGenFindText");
     var repInput = document.getElementById("inputGenReplaceText");
@@ -564,14 +1003,10 @@ Fitur:
 
     var visible = getVisibleCells();
     var checked = visible.filter(function(it) { return it.isChecked; });
-    var modified = checked.filter(function(it) { return it.isModified; });
 
     btn.innerHTML = '<span>⚡ 2. TERAPKAN PERUBAHAN KE SHEET AKTIF (' + checked.length + ' Sel Terpilih)</span>';
   }
 
-  /**
-   * 2. Eksekusi perubahan ke Sheet Aktif
-   */
   window.handleExecuteGenericReplace = function() {
     var visible = getVisibleCells();
     var itemsToUpdate = visible.filter(function(it) { return it.isChecked; });
@@ -608,7 +1043,6 @@ Fitur:
           btn.disabled = false;
           btn.innerHTML = '<span>⚡ 2. TERAPKAN PERUBAHAN KE SHEET AKTIF</span>';
           showAuditStatus("success", "BERHASIL! " + res.totalUpdated + " sel pada sheet '" + res.sheetName + "' telah di-replace" + (applyHighlight ? " dan diberi warna HIJAU MUDA!" : "!"));
-          // Tandai isModified = false dan oldValue = newValue
           itemsToUpdate.forEach(function(it) {
             it.oldValue = it.newValue;
             it.dispValue = String(it.newValue);
@@ -637,7 +1071,7 @@ Fitur:
     }
   };
 
-  // Helper konversi kolom number ke letter di client
+  // Helper
   function colNumberToLetter(colNum) {
     var temp = Number(colNum);
     var letter = "";

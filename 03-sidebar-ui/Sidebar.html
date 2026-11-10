@@ -49,7 +49,7 @@ Menu fitur dipecah modular ke dalam file HTML terpisah:
       >
         <option value="ciamso-pembanding" selected>05. Pembanding HPP Ciamso (Inventory Okt)</option>
         <option value="ciamso-replace">06. Replace Data (Replace All Bahan di Sheet)</option>
-        <option value="replace-range">03. Replace Range Seleksi (Universal di Sheet Aktif)</option>
+        <option value="replace-range">03. Cari &amp; Ganti (Ctrl+F / Ctrl+H) di Seluruh Sheet</option>
         <option value="hpp-audit">02. Pembanding HPP Central (2 Warna &amp; Auto Create Tabel)</option>
         <option value="scanner">04. Scanner Sheet (Central Storage &amp; Kitchen Live)</option>
         <option value="parser">01. Parser (Sheet Range → JSON)</option>
@@ -89,7 +89,7 @@ Menu fitur dipecah modular ke dalam file HTML terpisah:
         if (subtitle) subtitle.textContent = "Mode: 01. Parser (Sheet Range → JSON)";
       } else if (mode === "replace-range" || mode === "replace-hpp") {
         if (viewReplace) viewReplace.classList.remove("hidden");
-        if (subtitle) subtitle.textContent = "Mode: 03. Replace Range Seleksi (Universal di Sheet Aktif)";
+        if (subtitle) subtitle.textContent = "Mode: 03. Cari & Ganti (Ctrl+F / Ctrl+H) di Seluruh Sheet";
         if (typeof initReplaceHppView === "function") {
           initReplaceHppView();
         }
@@ -234,6 +234,27 @@ Menu fitur dipecah modular ke dalam file HTML terpisah:
       if (typeof initReferenceJsonPresets === "function") {
         initReferenceJsonPresets();
       }
+
+      // Shortcut Global: Ctrl+F & Ctrl+H membuka menu Cari & Ganti
+      document.addEventListener("keydown", function (e) {
+        if ((e.ctrlKey || e.metaKey) && (e.key === "f" || e.key === "F")) {
+          e.preventDefault();
+          switchFeatureMode("replace-range");
+          if (typeof switchReplaceModeTab === "function") switchReplaceModeTab("ctrlh");
+          setTimeout(function() {
+            var fInput = document.getElementById("inputCtrlFFind");
+            if (fInput) { fInput.focus(); fInput.select(); }
+          }, 100);
+        } else if ((e.ctrlKey || e.metaKey) && (e.key === "h" || e.key === "H")) {
+          e.preventDefault();
+          switchFeatureMode("replace-range");
+          if (typeof switchReplaceModeTab === "function") switchReplaceModeTab("ctrlh");
+          setTimeout(function() {
+            var rInput = document.getElementById("inputCtrlHReplace");
+            if (rInput) { rInput.focus(); rInput.select(); }
+          }, 100);
+        }
+      });
     });
   </script>
 </body>
