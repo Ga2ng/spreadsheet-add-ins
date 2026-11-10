@@ -1,0 +1,461 @@
+<!--
+===============================================================================
+MENU 05: SCANNER SHEET INVENTORY CIAMSO SBY (CiamsoScannerView.html)
+===============================================================================
+Fitur:
+1. Membaca langsung sheet "INVENTORY CIAMSO SBY OKT" (atau sheet memuat nama CIAMSO).
+2. Memisahkan dan mengelompokkan data berdasarkan 9 Kategori Tabel.
+3. Tombol Utama:
+   "⚡ SIMPAN & AKTIFKAN DATABASE CIAMSO"
+   - Menyimpan data Ciamso ke LocalStorage & DocumentProperties.
+   - Menu 06 otomatis langsung aktif menggunakan database 9 kategori ini!
+===============================================================================
+-->
+<div id="viewCiamsoScanner" class="hidden space-y-3">
+
+  <!-- STEP 1: PANEL SCAN SHEET CIAMSO -->
+  <section class="bg-white rounded-lg border border-slate-200 p-3.5 shadow-sm space-y-2.5">
+    <div class="flex items-start justify-between gap-2">
+      <div>
+        <h2 class="text-xs font-bold uppercase tracking-wider text-indigo-900">
+          Scanner Inventory Ciamso (9 Kategori)
+        </h2>
+        <p class="text-[11px] text-slate-500 mt-0.5">
+          Membaca sheet <code class="font-bold text-indigo-700">INVENTORY CIAMSO SBY OKT</code> &amp; memisahkan per kategori.
+        </p>
+      </div>
+      <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-indigo-100 text-indigo-800 border border-indigo-300 shrink-0">
+        Outlet Sby
+      </span>
+    </div>
+
+    <!-- OPSI TARGET SHEET -->
+    <div class="space-y-1">
+      <label for="inputCiamsoSheetName" class="block text-[10px] font-semibold text-slate-600 uppercase">
+        Nama Sheet Target:
+      </label>
+      <input
+        type="text"
+        id="inputCiamsoSheetName"
+        value="INVENTORY CIAMSO SBY OKT"
+        placeholder="INVENTORY CIAMSO SBY OKT atau nama sheet lain"
+        class="w-full text-xs border border-slate-300 rounded px-2.5 py-1.5 bg-slate-50 focus:bg-white focus:outline-none focus:ring-1 focus:ring-indigo-500 font-mono"
+      />
+      <div class="text-[9px] text-slate-400">
+        * Otomatis mendeteksi sheet yang mengandung kata "CIAMSO" jika nama tidak sama persis.
+      </div>
+    </div>
+
+    <!-- TOMBOL SCAN UTAMA -->
+    <button
+      id="btnRunCiamsoScan"
+      type="button"
+      onclick="handleRunCiamsoScan()"
+      class="w-full py-2.5 px-3 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white text-xs font-bold rounded-md shadow transition-colors flex items-center justify-center gap-1.5"
+    >
+      <span>🔍 1. SCAN SHEET INVENTORY CIAMSO SEKARANG</span>
+    </button>
+  </section>
+
+  <!-- STEP 2: HASIL SCANNING & BREAKDOWN 9 KATEGORI -->
+  <section id="ciamsoScanOutputSection" class="hidden bg-white rounded-lg border border-slate-200 p-3.5 shadow-sm space-y-3">
+    <div class="flex items-center justify-between">
+      <div>
+        <h2 class="text-xs font-bold uppercase tracking-wider text-indigo-900">Hasil Scan Ciamso</h2>
+        <p id="ciamsoScanTimestampText" class="text-[10px] text-slate-400">Terakhir discan: -</p>
+      </div>
+      <span id="ciamsoTotalItemBadge" class="text-[11px] font-bold text-indigo-800 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">
+        0 Item
+      </span>
+    </div>
+
+    <!-- STATS KPI CARDS -->
+    <div class="grid grid-cols-3 gap-1.5 text-center text-[10px]">
+      <div class="bg-indigo-50 border border-indigo-200 rounded p-1.5">
+        <div id="statCiamsoTotalItems" class="text-xs font-bold text-indigo-800">0</div>
+        <div class="text-indigo-700 font-medium">Total Item</div>
+      </div>
+      <div class="bg-purple-50 border border-purple-200 rounded p-1.5">
+        <div id="statCiamsoTotalCategories" class="text-xs font-bold text-purple-800">0</div>
+        <div class="text-purple-700 font-medium">Kategori Tabel</div>
+      </div>
+      <div class="bg-emerald-50 border border-emerald-200 rounded p-1.5">
+        <div id="statCiamsoLatestPeriod" class="text-[10px] font-bold text-emerald-800 truncate" title="-">-</div>
+        <div class="text-emerald-700 font-medium">Periode Terbaru</div>
+      </div>
+    </div>
+
+    <!-- FILTER TABS PER KATEGORI -->
+    <div class="space-y-1">
+      <div class="flex items-center justify-between text-[11px]">
+        <span class="font-bold text-slate-700">Pilih Kategori untuk Dilihat:</span>
+        <span id="ciamsoCatCountInfo" class="text-[10px] text-slate-400">0 Kategori</span>
+      </div>
+      <div id="ciamsoCategoryPillsContainer" class="flex flex-wrap gap-1 max-h-24 overflow-y-auto p-1 bg-slate-50 border border-slate-200 rounded">
+        <!-- Generated category pills -->
+      </div>
+    </div>
+
+    <!-- PREVIEW TABEL ITEM PER KATEGORI -->
+    <div class="space-y-1">
+      <div class="flex items-center justify-between text-[11px]">
+        <div class="flex items-center gap-1.5">
+          <span class="font-bold text-slate-700">Tabel Item:</span>
+          <span id="ciamsoActiveCatLabel" class="text-[10px] px-1.5 py-0.2 rounded bg-indigo-100 text-indigo-800 font-semibold">Semua</span>
+        </div>
+        <input
+          type="text"
+          id="searchCiamsoItemsInput"
+          placeholder="Cari item..."
+          oninput="handleSearchCiamsoItems(this.value)"
+          class="text-[10px] px-2 py-0.5 border border-slate-300 rounded w-28 bg-white"
+        />
+      </div>
+
+      <div class="border border-slate-200 rounded-md overflow-x-auto max-h-56">
+        <table class="w-full text-[10px] border-collapse">
+          <thead class="bg-indigo-900 text-white sticky top-0 z-10">
+            <tr>
+              <th class="px-2 py-1.5 text-center w-7">No</th>
+              <th class="px-2 py-1.5 text-left">Nama Bahan / Barang</th>
+              <th class="px-2 py-1.5 text-left">Kategori</th>
+              <th class="px-2 py-1.5 text-center">Satuan</th>
+              <th class="px-2 py-1.5 text-right">Harga Terbaru</th>
+            </tr>
+          </thead>
+          <tbody id="ciamsoPreviewTbody" class="divide-y divide-slate-200 bg-white"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- TOMBOL SIMPAN & AKTIFKAN DATABASE CIAMSO -->
+    <div class="bg-slate-900 text-white rounded-lg p-3 space-y-2.5 shadow-md border border-slate-800">
+      <div class="text-[11px] text-indigo-300 leading-relaxed font-semibold">
+        Simpan data Ciamso ini agar otomatis aktif di Menu 06 Pembanding HPP Ciamso:
+      </div>
+
+      <button
+        id="btnSaveCiamsoDatabase"
+        type="button"
+        onclick="handleSaveCiamsoDatabase()"
+        class="w-full py-2.5 px-3 bg-indigo-500 hover:bg-indigo-400 active:bg-indigo-600 text-white text-xs font-black rounded-md shadow transition-transform uppercase tracking-wider flex items-center justify-center gap-1.5"
+      >
+        <span>⚡ 2. SIMPAN &amp; AKTIFKAN DATABASE INVENTORY CIAMSO</span>
+      </button>
+
+      <!-- NOTIFIKASI SUKSES & SHORTCUT KE MENU 06 -->
+      <div id="ciamsoSavedNotice" class="hidden text-[10px] bg-indigo-950 text-indigo-200 p-2.5 rounded border border-indigo-500 space-y-1.5">
+        <div class="font-bold text-indigo-300 flex items-center gap-1.5 text-[11px]">
+          <span>✓ DATABASE CIAMSO AKTIF!</span>
+        </div>
+        <p class="leading-relaxed">
+          Data 9 Kategori Ciamso telah tersimpan. Anda bisa langsung membandingkan dengan HPP Resep atau mengganti harga ke sheet di Menu 06.
+        </p>
+        <button
+          type="button"
+          onclick="switchFeatureMode('ciamso-pembanding')"
+          class="w-full py-1.5 px-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded text-[10px] uppercase tracking-wide"
+        >
+          ➔ Buka Menu 06: Pembanding HPP Outlet Ciamso Sekarang
+        </button>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<script>
+  // State Global Menu 05 Scanner Ciamso
+  var ciamsoScanData = null;
+  var ciamsoActiveCategory = "ALL";
+  var ciamsoFilterSearch = "";
+
+  function initCiamsoScannerView() {
+    loadCachedCiamsoScanData();
+  }
+
+  function loadCachedCiamsoScanData() {
+    try {
+      var cached = localStorage.getItem("AUDIT_CIAMSO_DATASETS");
+      if (cached) {
+        var parsed = JSON.parse(cached);
+        if (parsed && parsed.categories && parsed.categories.length > 0) {
+          ciamsoScanData = parsed;
+          renderCiamsoScanResults();
+        }
+      }
+    } catch (e) {}
+  }
+
+  function handleRunCiamsoScan() {
+    var btn = document.getElementById("btnRunCiamsoScan");
+    var sheetInput = document.getElementById("inputCiamsoSheetName");
+    var customName = sheetInput ? sheetInput.value.trim() : "";
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="animate-spin inline-block">⏳</span> Memindai Sheet Ciamso (9 Kategori)...';
+    showAuditStatus("info", "Sedang membaca sheet Ciamso dan mengelompokkan 9 kategori tabel...");
+
+    if (hasGoogleScriptRun()) {
+      google.script.run
+        .withSuccessHandler(function (res) {
+          btn.disabled = false;
+          btn.innerHTML = '<span>🔍 1. SCAN SHEET INVENTORY CIAMSO SEKARANG</span>';
+          if (!res || !res.success) {
+            showAuditStatus("error", "Gagal memindai sheet Ciamso: Data tidak valid.");
+            return;
+          }
+          ciamsoScanData = res;
+          try {
+            localStorage.setItem("AUDIT_CIAMSO_DATASETS", JSON.stringify(res));
+          } catch (e) {}
+          renderCiamsoScanResults();
+          showAuditStatus("success", "✓ Berhasil memindai " + res.totalItems + " item dari " + res.totalCategories + " kategori tabel Ciamso!");
+        })
+        .withFailureHandler(function (err) {
+          btn.disabled = false;
+          btn.innerHTML = '<span>🔍 1. SCAN SHEET INVENTORY CIAMSO SEKARANG</span>';
+          showAuditStatus("error", "Gagal: " + (err.message || err));
+        })
+        .scanCiamsoSheetsDirectly(customName);
+    } else {
+      // Demo / offline fallback
+      setTimeout(function () {
+        btn.disabled = false;
+        btn.innerHTML = '<span>🔍 1. SCAN SHEET INVENTORY CIAMSO SEKARANG</span>';
+        ciamsoScanData = generateFallbackCiamsoData();
+        try {
+          localStorage.setItem("AUDIT_CIAMSO_DATASETS", JSON.stringify(ciamsoScanData));
+        } catch (e) {}
+        renderCiamsoScanResults();
+        showAuditStatus("success", "✓ Berhasil memindai demo 9 Kategori Ciamso (" + ciamsoScanData.totalItems + " Item)!");
+      }, 700);
+    }
+  }
+
+  function renderCiamsoScanResults() {
+    if (!ciamsoScanData) return;
+
+    var sec = document.getElementById("ciamsoScanOutputSection");
+    if (sec) sec.classList.remove("hidden");
+
+    var tsEl = document.getElementById("ciamsoScanTimestampText");
+    if (tsEl) {
+      tsEl.textContent = "Discan: " + (ciamsoScanData.scannedAt ? new Date(ciamsoScanData.scannedAt).toLocaleTimeString("id-ID") : "-");
+    }
+
+    var badge = document.getElementById("ciamsoTotalItemBadge");
+    if (badge) badge.textContent = ciamsoScanData.totalItems + " Item";
+
+    var statItems = document.getElementById("statCiamsoTotalItems");
+    if (statItems) statItems.textContent = ciamsoScanData.totalItems;
+
+    var statCats = document.getElementById("statCiamsoTotalCategories");
+    if (statCats) statCats.textContent = ciamsoScanData.totalCategories + " Kategori";
+
+    var statPeriod = document.getElementById("statCiamsoLatestPeriod");
+    if (statPeriod) statPeriod.textContent = ciamsoScanData.latestPeriod || "OKTOBER 2026";
+
+    renderCiamsoCategoryPills();
+    renderCiamsoItemsTable();
+  }
+
+  function renderCiamsoCategoryPills() {
+    var container = document.getElementById("ciamsoCategoryPillsContainer");
+    var countInfo = document.getElementById("ciamsoCatCountInfo");
+    if (!container || !ciamsoScanData || !ciamsoScanData.categories) return;
+
+    if (countInfo) countInfo.textContent = ciamsoScanData.categories.length + " Kategori Ditemukan";
+
+    var pills = [];
+    // Pill Semua
+    var isAllActive = ciamsoActiveCategory === "ALL";
+    pills.push(
+      '<button type="button" onclick="selectCiamsoCategory(\'ALL\')" class="px-2 py-0.5 rounded text-[10px] font-semibold transition-colors ' +
+      (isAllActive ? 'bg-indigo-600 text-white' : 'bg-white text-slate-700 border border-slate-300 hover:bg-slate-100') +
+      '">Semua (' + ciamsoScanData.totalItems + ')</button>'
+    );
+
+    ciamsoScanData.categories.forEach(function (cat) {
+      var isActive = ciamsoActiveCategory === cat.name;
+      pills.push(
+        '<button type="button" onclick="selectCiamsoCategory(\'' + escapeHtml(cat.name).replace(/'/g, "\\'") + '\')" class="px-2 py-0.5 rounded text-[10px] font-semibold transition-colors ' +
+        (isActive ? 'bg-indigo-600 text-white' : 'bg-white text-slate-700 border border-slate-300 hover:bg-slate-100') +
+        '">' + escapeHtml(cat.name) + ' (' + cat.itemCount + ')</button>'
+      );
+    });
+
+    container.innerHTML = pills.join("");
+  }
+
+  function selectCiamsoCategory(catName) {
+    ciamsoActiveCategory = catName;
+    renderCiamsoCategoryPills();
+    var labelEl = document.getElementById("ciamsoActiveCatLabel");
+    if (labelEl) labelEl.textContent = catName === "ALL" ? "Semua Kategori" : catName;
+    renderCiamsoItemsTable();
+  }
+
+  function handleSearchCiamsoItems(query) {
+    ciamsoFilterSearch = String(query || "").toLowerCase().trim();
+    renderCiamsoItemsTable();
+  }
+
+  function renderCiamsoItemsTable() {
+    var tbody = document.getElementById("ciamsoPreviewTbody");
+    if (!tbody || !ciamsoScanData || !ciamsoScanData.allItems) return;
+
+    var filtered = ciamsoScanData.allItems.filter(function (it) {
+      if (ciamsoActiveCategory !== "ALL" && it.kategori !== ciamsoActiveCategory) {
+        return false;
+      }
+      if (ciamsoFilterSearch) {
+        var matchName = String(it.itemName || "").toLowerCase().indexOf(ciamsoFilterSearch) !== -1;
+        var matchCat = String(it.kategori || "").toLowerCase().indexOf(ciamsoFilterSearch) !== -1;
+        return matchName || matchCat;
+      }
+      return true;
+    });
+
+    if (filtered.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="5" class="px-2 py-4 text-center text-slate-400 italic">Tidak ada item yang sesuai filter.</td></tr>';
+      return;
+    }
+
+    var rowsHtml = filtered.slice(0, 150).map(function (it, idx) {
+      var priceDisplay = it.latestPrice ? "Rp " + formatIDR(it.latestPrice) : "-";
+      return (
+        '<tr class="hover:bg-indigo-50/40 transition-colors">' +
+        '<td class="px-2 py-1 text-center font-mono text-slate-400">' + (idx + 1) + '</td>' +
+        '<td class="px-2 py-1 font-bold text-slate-800">' + escapeHtml(it.itemName) + '</td>' +
+        '<td class="px-2 py-1 text-slate-500 font-mono text-[9px]">' + escapeHtml(it.kategori) + '</td>' +
+        '<td class="px-2 py-1 text-center text-slate-600 font-mono text-[9px]">' + escapeHtml(it.gramasi || "-") + '</td>' +
+        '<td class="px-2 py-1 text-right font-bold text-indigo-700">' + priceDisplay + '</td>' +
+        '</tr>'
+      );
+    });
+
+    tbody.innerHTML = rowsHtml.join("");
+  }
+
+  function handleSaveCiamsoDatabase() {
+    if (!ciamsoScanData) return;
+    var btn = document.getElementById("btnSaveCiamsoDatabase");
+    var notice = document.getElementById("ciamsoSavedNotice");
+
+    btn.disabled = true;
+    btn.textContent = "Menyimpan Database...";
+
+    if (hasGoogleScriptRun()) {
+      var sheetInput = document.getElementById("inputCiamsoSheetName");
+      var customName = sheetInput ? sheetInput.value.trim() : "";
+      google.script.run
+        .withSuccessHandler(function () {
+          btn.disabled = false;
+          btn.innerHTML = '<span>⚡ 2. SIMPAN &amp; AKTIFKAN DATABASE INVENTORY CIAMSO</span>';
+          if (notice) notice.classList.remove("hidden");
+          showAuditStatus("success", "✓ Database Ciamso berhasil disimpan ke dokumen & siap dipakai!");
+          if (typeof initCiamsoPembandingView === "function") {
+            initCiamsoPembandingView();
+          }
+        })
+        .withFailureHandler(function (err) {
+          btn.disabled = false;
+          btn.innerHTML = '<span>⚡ 2. SIMPAN &amp; AKTIFKAN DATABASE INVENTORY CIAMSO</span>';
+          if (notice) notice.classList.remove("hidden");
+          showAuditStatus("info", "✓ Database Ciamso tersimpan lokal di browser.");
+        })
+        .updateCiamsoDataPembandingFromLiveScan(customName);
+    } else {
+      setTimeout(function () {
+        btn.disabled = false;
+        btn.innerHTML = '<span>⚡ 2. SIMPAN &amp; AKTIFKAN DATABASE INVENTORY CIAMSO</span>';
+        if (notice) notice.classList.remove("hidden");
+        showAuditStatus("success", "✓ Database Ciamso tersimpan di browser!");
+        if (typeof initCiamsoPembandingView === "function") {
+          initCiamsoPembandingView();
+        }
+      }, 400);
+    }
+  }
+
+  // Fallback demo data untuk testing di luar Apps Script
+  function generateFallbackCiamsoData() {
+    var categories = [
+      { name: "1. DAGING & AYAM", items: [
+        { itemName: "FILLET PAHA", gramasi: "KG", latestPrice: 48000, priceByCol: { "HARGA OKTOBER 2026": 48000 } },
+        { itemName: "AYAM UTUH", gramasi: "EKOR", latestPrice: 35000, priceByCol: { "HARGA OKTOBER 2026": 35000 } }
+      ]},
+      { name: "2. SEAFOOD & IKAN", items: [
+        { itemName: "UDANG VANAME", gramasi: "KG", latestPrice: 85000, priceByCol: { "HARGA OKTOBER 2026": 85000 } },
+        { itemName: "CUMI KUPAS", gramasi: "KG", latestPrice: 92000, priceByCol: { "HARGA OKTOBER 2026": 92000 } }
+      ]},
+      { name: "3. SAYUR & BUAH", items: [
+        { itemName: "BAWANG PUTIH KUPAS", gramasi: "KG", latestPrice: 36000, priceByCol: { "HARGA OKTOBER 2026": 36000 } },
+        { itemName: "JAHE", gramasi: "KG", latestPrice: 24000, priceByCol: { "HARGA OKTOBER 2026": 24000 } }
+      ]},
+      { name: "4. BUMBU & REMPAH", items: [
+        { itemName: "POWDER NGOHIONG", gramasi: "KG", latestPrice: 117000, priceByCol: { "HARGA OKTOBER 2026": 117000 } },
+        { itemName: "ANGKAK", gramasi: "KG", latestPrice: 68000, priceByCol: { "HARGA OKTOBER 2026": 68000 } }
+      ]},
+      { name: "5. SAUS & MINYAK", items: [
+        { itemName: "MINYAK WIJEN", gramasi: "620 ML", latestPrice: 44000, priceByCol: { "HARGA OKTOBER 2026": 44000 } },
+        { itemName: "SAOS TIRAM", gramasi: "770 GR", latestPrice: 52000, priceByCol: { "HARGA OKTOBER 2026": 52000 } },
+        { itemName: "MADU", gramasi: "KG", latestPrice: 49000, priceByCol: { "HARGA OKTOBER 2026": 49000 } }
+      ]},
+      { name: "6. BAHAN KERING & GULA", items: [
+        { itemName: "GULA", gramasi: "KG", latestPrice: 17500, priceByCol: { "HARGA OKTOBER 2026": 17500 } },
+        { itemName: "GARAM", gramasi: "KG", latestPrice: 19000, priceByCol: { "HARGA OKTOBER 2026": 19000 } },
+        { itemName: "VITZIN", gramasi: "KG", latestPrice: 49584, priceByCol: { "HARGA OKTOBER 2026": 49584 } },
+        { itemName: "KNORR", gramasi: "KG", latestPrice: 90100, priceByCol: { "HARGA OKTOBER 2026": 90100 } }
+      ]},
+      { name: "7. MINUMAN & BAR", items: [
+        { itemName: "SIRUP PANDAN", gramasi: "BTL", latestPrice: 32000, priceByCol: { "HARGA OKTOBER 2026": 32000 } },
+        { itemName: "TEH CIAMSO", gramasi: "KG", latestPrice: 45000, priceByCol: { "HARGA OKTOBER 2026": 45000 } }
+      ]},
+      { name: "8. PACKAGING & PLASTIK", items: [
+        { itemName: "PAPER BAG CIAMSO", gramasi: "PCS", latestPrice: 1200, priceByCol: { "HARGA OKTOBER 2026": 1200 } },
+        { itemName: "BOX NASI REGULAR", gramasi: "PCS", latestPrice: 1800, priceByCol: { "HARGA OKTOBER 2026": 1800 } }
+      ]},
+      { name: "9. OPERASIONAL & CHEMICAL", items: [
+        { itemName: "SABUN CUCI PIRING", gramasi: "DIR", latestPrice: 65000, priceByCol: { "HARGA OKTOBER 2026": 65000 } },
+        { itemName: "SPONS CUCI", gramasi: "PACK", latestPrice: 15000, priceByCol: { "HARGA OKTOBER 2026": 15000 } }
+      ]}
+    ];
+
+    var allItems = [];
+    var catDatasets = [];
+    var catIdx = 1;
+
+    categories.forEach(function (cat) {
+      var cItems = cat.items.map(function (it, idx) {
+        it.id = "ci-demo-" + catIdx + "-" + idx;
+        it.kategori = cat.name;
+        return it;
+      });
+      allItems = allItems.concat(cItems);
+      catDatasets.push({
+        id: "cat-" + catIdx,
+        name: cat.name,
+        category: cat.name,
+        itemCount: cItems.length,
+        items: cItems
+      });
+      catIdx++;
+    });
+
+    return {
+      success: true,
+      scannedAt: new Date().toISOString(),
+      spreadsheetName: "INVENTORY CIAMSO SBY OKT",
+      totalItems: allItems.length,
+      totalCategories: catDatasets.length,
+      categoryList: catDatasets.map(function (c) { return c.name; }),
+      latestPeriod: "OKTOBER 2026",
+      allPeriods: ["HARGA OKTOBER 2026"],
+      categories: catDatasets,
+      allItems: allItems
+    };
+  }
+</script>
+

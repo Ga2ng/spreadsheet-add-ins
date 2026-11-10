@@ -79,6 +79,39 @@ function normalizePeriodHeader(rawKey) {
     .trim();
 }
 
+const META_COL_REGEX = /^(NO|NOMOR|ID|KODE|ITEM|NAMA|BAHAN|BARANG|PRODUK|MATERIAL|GRAMASI|SATUAN|UNIT|UOM|BERAT|KEMASAN|QTY|PACKING|UKURAN|KATEGORI|CATEGORY|JENIS|GROUP|TIPE|NOTE|NOTES|KETERANGAN|STATUS|CEK|KET|CHECK)$/i;
+
+function isPriceColumn(key) {
+  const norm = String(key || "").trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
+  return !META_COL_REGEX.test(norm);
+}
+
+function extractItemName(row) {
+  for (const [k, v] of Object.entries(row)) {
+    const norm = String(k || "").trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
+    if (/^(ITEM|NAMABAHAN|BAHAN|NAMABARANG|BARANG|PRODUK|NAMAPRODUK|MATERIAL|RAWMATERIAL)$/i.test(norm)) {
+      if (v !== null && v !== undefined && typeof v !== "number") {
+        const str = String(v).replace(/\s+/g, " ").trim();
+        if (str && !/^\d+$/.test(str)) return str;
+      }
+    }
+  }
+  return null;
+}
+
+function extractGramasi(row) {
+  for (const [k, v] of Object.entries(row)) {
+    const norm = String(k || "").trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
+    if (/^(GRAMASI|SATUAN|UNIT|UOM|BERAT|KEMASAN|QTY|PACKING|UKURAN)$/i.test(norm)) {
+      if (v !== null && v !== undefined) {
+        const str = String(v).replace(/\s+/g, " ").trim().toUpperCase();
+        if (str) return str;
+      }
+    }
+  }
+  return "-";
+}
+
 /**
  * Memproses 1 file JSON mentah menjadi schema kolom + matriks baris yang hemat token
  */
@@ -95,7 +128,7 @@ function parseSingleJsonFile(filePath) {
     .toUpperCase()
     .trim();
 
-  // 1. Kumpulkan seluruh kolom PL UPDATE / PL CENTRAL yang memiliki minimal 1 harga valid (> 0)
+  // 1. Kumpulkan seluruh kolom harga yang memiliki minimal 1 harga valid (> 0)
   const activePeriods = [];
   const activePeriodSet = new Set();
 
@@ -103,15 +136,13 @@ function parseSingleJsonFile(filePath) {
   for (const row of rawRows) {
     if (!row || typeof row !== "object") continue;
     for (const [k, v] of Object.entries(row)) {
-      const upperK = String(k).toUpperCase();
-      if (upperK.includes("PL UPDATE") || upperK.includes("PL CENTRAL")) {
-        const cleanVal = parseCleanPrice(v);
-        if (cleanVal !== null && cleanVal > 0) {
-          const cleanCol = normalizePeriodHeader(upperK);
-          if (!activePeriodSet.has(cleanCol)) {
-            activePeriodSet.add(cleanCol);
-            activePeriods.push(cleanCol);
-          }
+      if (!isPriceColumn(k)) continue;
+      const cleanVal = parseCleanPrice(v);
+      if (cleanVal !== null && cleanVal > 0) {
+        const cleanCol = normalizePeriodHeader(k);
+        if (!activePeriodSet.has(cleanCol)) {
+          activePeriodSet.add(cleanCol);
+          activePeriods.push(cleanCol);
         }
       }
     }
@@ -125,30 +156,22 @@ function parseSingleJsonFile(filePath) {
   for (const row of rawRows) {
     if (!row || typeof row !== "object") continue;
 
-    const rawItem = row.ITEM !== undefined ? row.ITEM : (row["Nama Bahan"] || row["Bahan"]);
-    if (rawItem === null || rawItem === undefined || typeof rawItem === "number") {
-      skippedEmptyCount++;
-      continue;
-    }
-    const itemName = String(rawItem).replace(/\s+/g, " ").trim();
-    if (!itemName || /^\d+$/.test(itemName)) {
+    const itemName = extractItemName(row);
+    if (!itemName) {
       skippedEmptyCount++;
       continue;
     }
 
-    const rawGram = row.GRAMASI || row.Gramasi || row.SATUAN || row.Satuan || "-";
-    const gramasi = String(rawGram || "-").replace(/\s+/g, " ").trim().toUpperCase();
+    const gramasi = extractGramasi(row);
 
     // Peta harga bersih untuk baris ini
     const priceMap = {};
     for (const [k, v] of Object.entries(row)) {
-      const upperK = String(k).toUpperCase();
-      if (upperK.includes("PL UPDATE") || upperK.includes("PL CENTRAL")) {
-        const cleanCol = normalizePeriodHeader(upperK);
-        const cleanVal = parseCleanPrice(v);
-        if (cleanVal !== null && cleanVal > 0) {
-          priceMap[cleanCol] = cleanVal;
-        }
+      if (!isPriceColumn(k)) continue;
+      const cleanCol = normalizePeriodHeader(k);
+      const cleanVal = parseCleanPrice(v);
+      if (cleanVal !== null && cleanVal > 0) {
+        priceMap[cleanCol] = cleanVal;
       }
     }
 
@@ -405,6 +428,9 @@ ${parsedDatasets
     { src: "03-sidebar-ui/PembandingView.html", dest: "PembandingView.html" },
     { src: "03-sidebar-ui/ReplaceHppView.html", dest: "ReplaceHppView.html" },
     { src: "03-sidebar-ui/ScannerView.html", dest: "ScannerView.html" },
+    { src: "03-sidebar-ui/CiamsoScannerView.html", dest: "CiamsoScannerView.html" },
+    { src: "03-sidebar-ui/CiamsoPembandingView.html", dest: "CiamsoPembandingView.html" },
+    { src: "03-sidebar-ui/ReplaceDataView.html", dest: "ReplaceDataView.html" },
     { src: "03-sidebar-ui/ParserView.html", dest: "ParserView.html" }
   ];
 

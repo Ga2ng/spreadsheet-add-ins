@@ -299,9 +299,10 @@ Fitur:
     }
 
     var defaultCol = "";
-    // Cari kolom PL CENTRAL terbaru dari belakang
+    // Cari kolom CENTRAL / PUSAT terbaru dari belakang
     for (var i = periodCols.length - 1; i >= 0; i--) {
-      if (periodCols[i].toUpperCase().indexOf("PL CENTRAL") !== -1) {
+      var upCol = periodCols[i].toUpperCase();
+      if (upCol.indexOf("CENTRAL") !== -1 || upCol.indexOf("PUSAT") !== -1 || upCol.indexOf("GUDANG") !== -1) {
         defaultCol = periodCols[i];
         break;
       }
@@ -313,7 +314,8 @@ Fitur:
     // Bangun opsi dropdown berurutan dari yang terbaru ke terlama
     var reversedCols = periodCols.slice().reverse();
     var opts = reversedCols.map(function (col) {
-      var isCentral = col.toUpperCase().indexOf("PL CENTRAL") !== -1;
+      var up = col.toUpperCase();
+      var isCentral = up.indexOf("CENTRAL") !== -1 || up.indexOf("PUSAT") !== -1 || up.indexOf("GUDANG") !== -1;
       var tag = isCentral ? " ★ (Central)" : "";
       return '<option value="' + escapeHtml(col) + '">' + escapeHtml(col) + tag + '</option>';
     });

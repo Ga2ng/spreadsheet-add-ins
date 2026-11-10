@@ -63,10 +63,46 @@ Menu 03 dipisahkan secara mandiri khusus untuk **mengganti harga HPP resep ke sh
 
 ---
 
-## 5. Struktur File HTML Terpisah (3 Menu Mandiri)
+## 5. Struktur File HTML Terpisah (Modular Edition)
 
 Untuk memudahkan pemeliharaan dan menjaga performa sidebar, UI di folder `03-sidebar-ui/` dipecah modular per menu:
 - [`Sidebar.html`](file:///c:/DEV/addons-spreadsheet/03-sidebar-ui/Sidebar.html) : Kerangka utama, Header switcher menu, dan penampung include.
 - [`ParserView.html`](file:///c:/DEV/addons-spreadsheet/03-sidebar-ui/ParserView.html) : Menu 01 Parser Range ke JSON.
-- [`PembandingView.html`](file:///c:/DEV/addons-spreadsheet/03-sidebar-ui/PembandingView.html) : Menu 02 Pembanding HPP (2 warna & auto create tabel pembanding).
-- [`ReplaceHppView.html`](file:///c:/DEV/addons-spreadsheet/03-sidebar-ui/ReplaceHppView.html) : Menu 03 Replace Harga HPP (preview lama vs baru, smart scale & apply ke sheet).
+- [`PembandingView.html`](file:///c:/DEV/addons-spreadsheet/03-sidebar-ui/PembandingView.html) : Menu 02 Pembanding HPP Central (2 warna & auto create tabel pembanding Central).
+- [`ReplaceHppView.html`](file:///c:/DEV/addons-spreadsheet/03-sidebar-ui/ReplaceHppView.html) : Menu 03 Replace Harga HPP Central (Central Kitchen & Storage).
+- [`ScannerView.html`](file:///c:/DEV/addons-spreadsheet/03-sidebar-ui/ScannerView.html) : Menu 04 Scanner Sheet Central Storage & Kitchen Live.
+- [`CiamsoPembandingView.html`](file:///c:/DEV/addons-spreadsheet/03-sidebar-ui/CiamsoPembandingView.html) : Menu 05 Pembanding HPP Ciamso (Inventory Okt) — mekanisme persis Menu 02 dengan base data `INVENTORY CIAMSO SBY OKT` (116 Item).
+
+---
+
+## 6. Menu 05: Pembanding HPP Ciamso (Inventory Okt)
+1. **Mekanisme Sama Persis Menu 02:**
+   - Membaca baris HPP resep di sheet (termasuk multi-menu seperti BUBUR ORIENTAL & BUBUR AYAM HAUCEK, baris kosong, dan baris TOTAL).
+   - Base Data: 116 item dari `INVENTORY CIAMSO SBY OKT` (folder `inventory_ciamso_sby_Okt/`).
+2. **Aturan 2 Warna & Note:**
+   - 🟩 **Hijau Muda (`#dcfce7`)** jika `<= HPP` (Sesuai / Turun / Aman)
+   - 🟥 **Merah Muda (`#fee2e2`)** jika `> HPP` (Naik)
+   - Kolom **NOTE**: `🟢 AMAN (<= HPP)` atau `🔺 NAIK (Ciamso: +X vs HPP)` atau `⚪ TIDAK DITEMUKAN`.
+   - Baris kosong / baris `TOTAL` otomatis dilewati tanpa merusak keselarasan baris.
+3. **Dua Tombol Eksekusi:**
+   - **Tombol 1 (Auto Create Tabel):** Menuliskan kolom `[HARGA CIAMSO (OKT 2026), NOTE]` di sebelah kanan tabel resep dengan 2 warna & border rapi.
+   - **Tombol 2 (Replace Kolom Harga/Kemasan):** Menimpa kolom `HARGA / KEMASAN` dengan harga Ciamso dan memberi highlight **HIJAU** (`#dcfce7`). Rumus Harga/gr & Total terhitung ulang otomatis.
+
+---
+
+## 7. Menu 06: Replace Data (Replace All Bahan di Seluruh Sheet)
+
+Menu 06 dirancang khusus untuk mempermudah pembaruan harga bahan baku yang dipakai di banyak resep sekaligus:
+1. **Mode 1 — 🎯 Cari 1 Bahan & Replace All:**
+   - Pengguna memilih/mencari nama bahan (misal `beras`, `ayam grill`, `daun bawang`).
+   - Sistem memindai seluruh resep di sheet aktif dan menampilkan seluruh sel `HARGA / KEMASAN` yang menggunakan bahan tersebut (misal: BUBUR ORIENTAL baris 4 G4, BUBUR AYAM HAUCEK baris 14 G14).
+   - Menampilkan perbandingan Harga Lama ➔ Harga Baru Ciamso.
+   - Tombol **⚡ REPLACE ALL BAHAN INI DI SELURUH SHEET (WARNA HIJAU)**: langsung memperbarui seluruh sel tersebut di spreadsheet sekaligus dan mewarnainya dengan latar hijau muda (`#dcfce7`).
+2. **Mode 2 — 📋 Scan Seluruh Sheet & Replace Massal:**
+   - Memindai seluruh sheet aktif secara otomatis untuk mengekstrak seluruh resep & bahan.
+   - Menampilkan tabel rekap bahan, jumlah resep yang memakai, status pencocokan Ciamso, dan checkbox.
+   - Tombol **⚡ REPLACE ALL BAHAN TERPILIH DI SELURUH SHEET (WARNA HIJAU)**: mengganti semua sel yang dicentang sekaligus.
+3. **Mode 3 — 🔍 Range Seleksi Manual:**
+   - Pengguna dapat memblok range baris tertentu seperti biasa dan menekan replace.
+4. **Integrasi Pintas dari Menu 05:**
+   - Setiap kartu bahan di Menu 05 dilengkapi tombol cepat: **⚡ Replace All "[Bahan]" di Seluruh Sheet (Menu 06)**.

@@ -421,31 +421,42 @@ Fitur:
 
   function parsePeriodColumnMeta(colName) {
     var upper = String(colName || "").toUpperCase().replace(/_\d+$/, "").replace(/\s+/g, " ").trim();
-    var isCentral = upper.indexOf("PL CENTRAL") !== -1;
-    var type = isCentral ? "PL CENTRAL" : "PL UPDATE";
-    var datePart = upper.replace(/^PL\s+(UPDATE|CENTRAL)\s*/i, "").trim();
+    var isCentral = upper.indexOf("CENTRAL") !== -1 || upper.indexOf("PUSAT") !== -1 || upper.indexOf("GUDANG") !== -1 || upper.indexOf("STORAGE") !== -1;
+    var type = isCentral ? "CENTRAL" : "UPDATE";
+    var datePart = upper.replace(/^(PL\s*(UPDATE|CENTRAL|PUSAT|GUDANG)?|UPDATE|CENTRAL|HARGA(\s*BARU)?|PRICE)\s*/i, "").trim();
 
     var day = 1;
     var monthNum = 0;
     var monthShort = "";
     var year = 2026;
 
-    var tokens = datePart.split(" ");
-    for (var i = 0; i < tokens.length; i++) {
-      var t = tokens[i];
-      if (/^\d{1,2}$/.test(t)) {
-        day = parseInt(t, 10);
-      } else if (/^\d{4}$/.test(t)) {
-        year = parseInt(t, 10);
-      } else if (MONTH_MAP_ID[t]) {
-        monthNum = MONTH_MAP_ID[t];
-        monthShort = t.slice(0, 3);
+    // Cek format tanggal numerik seperti DD/MM/YYYY atau DD-MM-YYYY
+    var slashMatch = datePart.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2,4})$/);
+    if (slashMatch) {
+      day = parseInt(slashMatch[1], 10);
+      monthNum = parseInt(slashMatch[2], 10);
+      var yStr = slashMatch[3];
+      year = yStr.length === 2 ? 2000 + parseInt(yStr, 10) : parseInt(yStr, 10);
+      monthShort = Object.keys(MONTH_MAP_ID).find(function (k) { return MONTH_MAP_ID[k] === monthNum; }) || String(monthNum);
+    } else {
+      var tokens = datePart.split(" ");
+      for (var i = 0; i < tokens.length; i++) {
+        var t = tokens[i];
+        if (/^\d{1,2}$/.test(t) && parseInt(t, 10) <= 31) {
+          day = parseInt(t, 10);
+        } else if (/^\d{4}$/.test(t)) {
+          year = parseInt(t, 10);
+        } else if (MONTH_MAP_ID[t]) {
+          monthNum = MONTH_MAP_ID[t];
+          monthShort = t.slice(0, 3);
+        }
       }
     }
 
     var sortKey = year * 100000 + monthNum * 1000 + day * 10 + (isCentral ? 2 : 1);
-    var isAugustOrLater = year > 2026 || (year === 2026 && monthNum >= 8) || monthNum >= 8;
-    var shortLabel = day + " " + (monthShort || datePart) + " (" + (isCentral ? "Ctr" : "Upd") + ")";
+    // Kolom baru tanpa deteksi bulan otomatis diikutsertakan di filter default
+    var isAugustOrLater = monthNum === 0 ? true : (year > 2026 || (year === 2026 && monthNum >= 8) || monthNum >= 8);
+    var shortLabel = day + " " + (monthShort || datePart || "Baru") + " (" + (isCentral ? "Ctr" : "Upd") + ")";
 
     return {
       colName: upper,
@@ -642,6 +653,8 @@ Fitur:
     var count = 1;
     var dedupMap = {};
 
+    var META_KEY_REGEX = /^(NO|NOMOR|ID|KODE|ITEM|NAMA|BAHAN|BARANG|PRODUK|MATERIAL|GRAMASI|SATUAN|UNIT|UOM|BERAT|KEMASAN|QTY|PACKING|UKURAN|KATEGORI|CATEGORY|JENIS|GROUP|TIPE|NOTE|NOTES|KETERANGAN|STATUS|CEK|KET|CHECK)$/i;
+
     (rawArray || []).forEach(function (obj) {
       if (!obj || typeof obj !== "object") return;
       var entries = Object.entries(obj);
@@ -657,26 +670,26 @@ Fitur:
         var val = entries[i][1];
         var normK = normalizeKey(key);
 
-        if (!rawName && (normK === "item" || normK === "namabahan" || normK === "bahan")) {
+        if (!rawName && (normK === "item" || normK === "namabahan" || normK === "bahan" || normK === "namabarang" || normK === "barang" || normK === "produk" || normK === "namaproduk" || normK === "material" || normK === "rawmaterial")) {
           rawName = val;
           continue;
         }
-        if (normK.indexOf("kategori") !== -1 && val) {
+        if ((normK.indexOf("kategori") !== -1 || normK === "category" || normK === "jenis" || normK === "group" || normK === "tipe") && val) {
           rawKategori = val;
           continue;
         }
-        if (!rawGramasi && (normK.indexOf("gramasi") !== -1 || normK === "satuan" || normK.indexOf("kemasan") !== -1)) {
+        if (!rawGramasi && (normK.indexOf("gramasi") !== -1 || normK === "satuan" || normK.indexOf("kemasan") !== -1 || normK === "unit" || normK === "uom" || normK === "berat" || normK === "qty" || normK === "packing" || normK === "ukuran")) {
           rawGramasi = val;
           continue;
         }
 
         var upperKey = key.toUpperCase();
-        if (upperKey.indexOf("PL UPDATE") !== -1 || upperKey.indexOf("PL CENTRAL") !== -1) {
-          var meta = parsePeriodColumnMeta(upperKey);
-          var cleanLabel = meta.colName;
+        var cleanNormKey = normK.replace(/[^A-Z0-9]/g, "");
+        if (!META_KEY_REGEX.test(cleanNormKey)) {
           var numPrice = parseNum(val);
-
           if (numPrice !== null && numPrice > 0) {
+            var meta = parsePeriodColumnMeta(upperKey);
+            var cleanLabel = meta.colName;
             priceByCol[cleanLabel] = numPrice;
             if (!periodSet[cleanLabel]) {
               periodSet[cleanLabel] = meta;

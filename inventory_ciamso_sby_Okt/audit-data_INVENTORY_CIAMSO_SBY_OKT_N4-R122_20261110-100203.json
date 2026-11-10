@@ -1,0 +1,834 @@
+{
+  "metadata": {
+    "tool": "Audit Data Tools",
+    "version": "2.4.0",
+    "sourceSheet": "INVENTORY CIAMSO SBY OKT",
+    "sourceRange": "N4:R122",
+    "rowCount": 119,
+    "columnCount": 5,
+    "exportedAt": "2026-11-10T03:02:03.806Z",
+    "hasHeader": true,
+    "format": "array-of-objects"
+  },
+  "data": [
+    {
+      "INVENTORI FOOD & SNACK": "Nama Barang",
+      "Column_2": "QTY",
+      "Column_3": "Unit",
+      "Column_4": "Price",
+      "Column_5": "Subtotal"
+    },
+    {
+      "INVENTORI FOOD & SNACK": "AYAM CHARSIU (PER VACUM @5 PORSI)",
+      "Column_2": null,
+      "Column_3": "PORSI",
+      "Column_4": 13814,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "AYAM CHARSIU (PROMO) (PER VACUM @10 PORSI)",
+      "Column_2": null,
+      "Column_3": "PORSI",
+      "Column_4": 5112,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "AYAM GRILL (PER VACUM @10 PORSI)",
+      "Column_2": null,
+      "Column_3": "PORSI",
+      "Column_4": 5674,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "AYAM HAINAN (PER VACUM @8 PORSI)",
+      "Column_2": null,
+      "Column_3": "PORSI",
+      "Column_4": 10842,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "AYAM JAMUR SHITAKE @90 GRAM/PORSI",
+      "Column_2": null,
+      "Column_3": "PORSI",
+      "Column_4": 8908,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "AYAM SECHUAN @90 GRAM/PORSI",
+      "Column_2": null,
+      "Column_3": "PORSI",
+      "Column_4": 8843,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "AYAM UNGKEP (PROMO) (PER VACUM @5 PORSI)",
+      "Column_2": null,
+      "Column_3": "PORSI",
+      "Column_4": 11968,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "AYAM UNGKEP WIP (PER VACUM @8 PORSI)",
+      "Column_2": null,
+      "Column_3": "PORSI",
+      "Column_4": 7922,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "BAWANG BOMBAY",
+      "Column_2": null,
+      "Column_3": "GRAM",
+      "Column_4": 35,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "BAWANG MERAH GORENG @1.000 GR/ PACK",
+      "Column_2": null,
+      "Column_3": "GRAM",
+      "Column_4": 116,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "BAWANG MERAH KUPAS",
+      "Column_2": null,
+      "Column_3": "GRAM",
+      "Column_4": 32,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "BAWANG PRE",
+      "Column_2": null,
+      "Column_3": "GRAM",
+      "Column_4": 40,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "BAWANG PUTIH GORENG @1.000GR/ PACK",
+      "Column_2": null,
+      "Column_3": "GRAM",
+      "Column_4": 105,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "BAWANG PUTIH KUPAS",
+      "Column_2": null,
+      "Column_3": "GRAM",
+      "Column_4": 38,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "BEEF SECHUAN @90 GRAM/PORSI",
+      "Column_2": null,
+      "Column_3": "PORSI",
+      "Column_4": 17275,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "BEEF TRUFFLE NEW @50 GRAM/PORSI",
+      "Column_2": null,
+      "Column_3": "PORSI",
+      "Column_4": 10297,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "BERAS @25.000 GR/ SAK",
+      "Column_2": null,
+      "Column_3": "GRAM",
+      "Column_4": 17,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "BLACKPAPER GROUND @1.000 GR/ PACK",
+      "Column_2": null,
+      "Column_3": "GRAM",
+      "Column_4": 177,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "BLACKPAPER SAUCE @35 GRAM/PORSI",
+      "Column_2": null,
+      "Column_3": "PORSI",
+      "Column_4": 1757,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "BUMBU RACIK AYAM (@26GR/ PCS)",
+      "Column_2": null,
+      "Column_3": "PCS",
+      "Column_4": 2200,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "CABE HIJAU BESAR",
+      "Column_2": null,
+      "Column_3": "GRAM",
+      "Column_4": 24,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "CABE IJO BOTOL / JAPLAK",
+      "Column_2": null,
+      "Column_3": "GRAM",
+      "Column_4": 60,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "CABE MERAH BESAR",
+      "Column_2": null,
+      "Column_3": "GRAM",
+      "Column_4": 44,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "CABE RAWIT",
+      "Column_2": null,
+      "Column_3": "GRAM",
+      "Column_4": 60,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "CHILI OIL @1.000 ML",
+      "Column_2": null,
+      "Column_3": "ML",
+      "Column_4": 31,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "CHILI POWDER @1000 GR/ PACK",
+      "Column_2": null,
+      "Column_3": "GRAM",
+      "Column_4": 62,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "CHILI SAUCE @5500 GR/ JIRIGEN",
+      "Column_2": null,
+      "Column_3": "GRAM",
+      "Column_4": 14,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "COOKING CREAM @1000ML/ PACK",
+      "Column_2": null,
+      "Column_3": "ML",
+      "Column_4": 70,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "CUKA @80 ML/BOTOL",
+      "Column_2": null,
+      "Column_3": "ML",
+      "Column_4": 63,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "CURRY BLOCK @220GR/@44PORSI/PACK",
+      "Column_2": null,
+      "Column_3": "PORSI",
+      "Column_4": 1813,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "DAGING LADA HITAM @40 GRAM/PORSI",
+      "Column_2": null,
+      "Column_3": "PORSI",
+      "Column_4": 8012,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "DAUN BAWANG",
+      "Column_2": null,
+      "Column_3": "GRAM",
+      "Column_4": 30,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "DAUN CARY @100 GRAM/PACK",
+      "Column_2": null,
+      "Column_3": "GRAM",
+      "Column_4": 150,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "DAUN PISANG",
+      "Column_2": null,
+      "Column_3": "GRAM",
+      "Column_4": 16,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "DAUN SALAM",
+      "Column_2": null,
+      "Column_3": "GRAM",
+      "Column_4": 67,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "FF STRAICUT @2000GR/PACK",
+      "Column_2": null,
+      "Column_3": "GRAM",
+      "Column_4": 27,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "FILLET DADA @25 GRAM/PORSI",
+      "Column_2": null,
+      "Column_3": "PORSI",
+      "Column_4": 1771,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "GARAM @1000GR/PACK",
+      "Column_2": null,
+      "Column_3": "GRAM",
+      "Column_4": 21,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "GOHYONG @5 PCS/PORSI",
+      "Column_2": null,
+      "Column_3": "PORSI",
+      "Column_4": 6839,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "GULA PASIR CENTRAL @1000GR/PACK",
+      "Column_2": null,
+      "Column_3": "GRAM",
+      "Column_4": 18,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "GYOZA @3PCS/PORSI",
+      "Column_2": null,
+      "Column_3": "PORSI",
+      "Column_4": 7875,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "HAIR CAP @100PCS/PACK",
+      "Column_2": null,
+      "Column_3": "PACK",
+      "Column_4": 38500,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "KECAP ASIN @600 ML/BOTOL",
+      "Column_2": null,
+      "Column_3": "ML",
+      "Column_4": 71,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "KECAP IKAN @620 ML/BOTOL",
+      "Column_2": null,
+      "Column_3": "ML",
+      "Column_4": 55,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "KECAP MANIS 5,7 KG @5.700 GRAM/JRG",
+      "Column_2": null,
+      "Column_3": "GRAM",
+      "Column_4": 27,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "KEMIRI",
+      "Column_2": null,
+      "Column_3": "GRAM",
+      "Column_4": 58,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "KERONGKONGAN",
+      "Column_2": null,
+      "Column_3": "GRAM",
+      "Column_4": 8,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "KERTAS DIMSUM @500 PCS @PACK",
+      "Column_2": null,
+      "Column_3": "PCS",
+      "Column_4": 132,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "KERUPUK",
+      "Column_2": null,
+      "Column_3": "PORSI",
+      "Column_4": 1050,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "KNORR @1000 GR/PACK",
+      "Column_2": null,
+      "Column_3": "GRAM",
+      "Column_4": 99,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "KRESEK CHILLER",
+      "Column_2": null,
+      "Column_3": "PACK",
+      "Column_4": 10450,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "KULIT PANGSIT @20 PCS/PACK",
+      "Column_2": null,
+      "Column_3": "PCS",
+      "Column_4": 394,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "KWETIAUW (@450 GR/PACK) @150 GR/PORSI",
+      "Column_2": null,
+      "Column_3": "GRAM",
+      "Column_4": 19,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "LADA PUTIH @1000 GR/PACK",
+      "Column_2": null,
+      "Column_3": "GRAM",
+      "Column_4": 108,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "MAYONAISE @1000 GR/PACK",
+      "Column_2": null,
+      "Column_3": "GRAM",
+      "Column_4": 28,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "MIE @12 PORSI/PACK",
+      "Column_2": null,
+      "Column_3": "PORSI",
+      "Column_4": 1225,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "MIE KERING GANDUM (@131 GRAM/PACK) @2 PORSI/PACK",
+      "Column_2": null,
+      "Column_3": "PORSI",
+      "Column_4": 2363,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "MIE KERITING @12 PORSI/PACK",
+      "Column_2": null,
+      "Column_3": "PORSI",
+      "Column_4": 1619,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "MINYAK AYAM @1000 ML/PACK",
+      "Column_2": null,
+      "Column_3": "ML",
+      "Column_4": 40,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "MINYAK GORENG (@12.000 ML/CART) @1.000 ML/BOTOL",
+      "Column_2": null,
+      "Column_3": "ML",
+      "Column_4": 21,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "MINYAK WIJEN @620 ML / BOTOL",
+      "Column_2": null,
+      "Column_3": "ML",
+      "Column_4": 78,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "MIX VEGETABLE  (@1000 GR/PACK) (@30 GRAM/PORSI)",
+      "Column_2": null,
+      "Column_3": "GRAM",
+      "Column_4": 60,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "PACKING DUCK WIP @5 SLICE/PORSI",
+      "Column_2": null,
+      "Column_3": "PORSI",
+      "Column_4": 19829,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "PAO (@33 PCS /PACK) @3 PCS/PORSI",
+      "Column_2": null,
+      "Column_3": "PCS",
+      "Column_4": 2864,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "PISANG COKLAT (@10 PCS/PACK) @3 PCS/PORSI",
+      "Column_2": null,
+      "Column_3": "PCS",
+      "Column_4": 2100,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "PLASTIK 1 KG",
+      "Column_2": null,
+      "Column_3": "PACK",
+      "Column_4": 4400,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "PLASTIK 1/2KG",
+      "Column_2": null,
+      "Column_3": "PACK",
+      "Column_4": 3300,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "POHONG KREZZ @2 PORSI / PACK",
+      "Column_2": null,
+      "Column_3": "PORSI",
+      "Column_4": 5500,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "POKCOY",
+      "Column_2": null,
+      "Column_3": "GRAM",
+      "Column_4": 12,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "PONTIANAK SAUCE @40 GRAM/PORSI",
+      "Column_2": null,
+      "Column_3": "PORSI",
+      "Column_4": 1229,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "PREMIX BAWANG @25 GRAM/PORSI",
+      "Column_2": null,
+      "Column_3": "PORSI",
+      "Column_4": 1831,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "PREMIX KUAH KALDU @75 PORSI/PACK",
+      "Column_2": null,
+      "Column_3": "PORSI",
+      "Column_4": 649,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "PREMIX MIE",
+      "Column_2": null,
+      "Column_3": "PORSI",
+      "Column_4": 1991,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "PREMIX NASGOR",
+      "Column_2": null,
+      "Column_3": "PORSI",
+      "Column_4": 1133,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "PREMIX NASI @130 GRAM/PACK (@4,33 GRAM/PORSI)",
+      "Column_2": null,
+      "Column_3": "PACK",
+      "Column_4": 7552,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "RAJA RASA @600 ML/BOTOL",
+      "Column_2": null,
+      "Column_3": "ML",
+      "Column_4": 70,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "RBC/CHICKEN KARAAGE/CHICKEN FILLET @90 GRAM/PORSI",
+      "Column_2": null,
+      "Column_3": "PORSI",
+      "Column_4": 7895.5,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "SAMBAL BAWANG",
+      "Column_2": null,
+      "Column_3": "PORSI",
+      "Column_4": 602,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "SAMBAL IJO",
+      "Column_2": null,
+      "Column_3": "PORSI",
+      "Column_4": 906,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "SAMBAL TERASI @20 GRAM/PORSI",
+      "Column_2": null,
+      "Column_3": "PORSI",
+      "Column_4": 2517,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "SANTAN @1000 ML/PACK",
+      "Column_2": null,
+      "Column_3": "ML",
+      "Column_4": 75,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "SAUCE TOMAT (RIMBARIA) @500 GR/BOTOL",
+      "Column_2": null,
+      "Column_3": "GRAM",
+      "Column_4": 34,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "SAWI",
+      "Column_2": null,
+      "Column_3": "GRAM",
+      "Column_4": 20,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "SIOMAY AYAM (@25 PCS /PACK) @3 PCS/PORSI",
+      "Column_2": null,
+      "Column_3": "PCS",
+      "Column_4": 2835,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "SIOMAY CRABSTICK (@25 PCS/PACK) @3 PCS/PORSI",
+      "Column_2": null,
+      "Column_3": "PCS",
+      "Column_4": 2835,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "SIOMAY MOZARELLA (@25 PCS/PACK) @3 PCS/PORSI",
+      "Column_2": null,
+      "Column_3": "PCS",
+      "Column_4": 2835,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "SIOMAY PEDAS (@25 PCS/PACK) @3 PCS/PORSI",
+      "Column_2": null,
+      "Column_3": "PCS",
+      "Column_4": 2835,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "SUMPIT BAMBU WIGO",
+      "Column_2": null,
+      "Column_3": "PACK",
+      "Column_4": 7150,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "TAHU SUTRA",
+      "Column_2": null,
+      "Column_3": "PORSI",
+      "Column_4": 400,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "TELUR ASIN",
+      "Column_2": null,
+      "Column_3": "PCS",
+      "Column_4": 4725,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "TELUR AYAM KAMPUNG",
+      "Column_2": null,
+      "Column_3": "PCS",
+      "Column_4": 3150,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "TELUR AYAM KITCHEN",
+      "Column_2": null,
+      "Column_3": "PCS",
+      "Column_4": 1477,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "TELUR PITAN @4 PORSI/PCS",
+      "Column_2": null,
+      "Column_3": "PORSI",
+      "Column_4": 2750,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "TEMPE @10 PORSI / PAPAN",
+      "Column_2": null,
+      "Column_3": "PORSI",
+      "Column_4": 450,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "TEPUNG TERIGU @1000 GR/PACK",
+      "Column_2": null,
+      "Column_3": "GRAM",
+      "Column_4": 14,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "TERASI @20PCS/RENTENG",
+      "Column_2": null,
+      "Column_3": "PCS",
+      "Column_4": 468,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "TERI KACANG @20 GRAM/PORSI",
+      "Column_2": null,
+      "Column_3": "PORSI",
+      "Column_4": 1583,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "THINWALL 500ML @25 PCS/SLOP",
+      "Column_2": null,
+      "Column_3": "PCS",
+      "Column_4": 924,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "THINWALL 750ML @25 PCS/SLOP",
+      "Column_2": null,
+      "Column_3": "PCS",
+      "Column_4": 1496,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "TIM TAHU (@25 PCS/PACK) @3 PCS/PORSI",
+      "Column_2": null,
+      "Column_3": "PCS",
+      "Column_4": 2835,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "TIMUN",
+      "Column_2": null,
+      "Column_3": "GRAM",
+      "Column_4": 12,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "TIRAM PANDA (@770 ML/BOTOL)",
+      "Column_2": null,
+      "Column_3": "ML",
+      "Column_4": 74,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "TOGE PANJANG",
+      "Column_2": null,
+      "Column_3": "GRAM",
+      "Column_4": 14,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "TOMAT & TOMAT HIJAU",
+      "Column_2": null,
+      "Column_3": "GRAM",
+      "Column_4": 20,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "TOMATO SAUCE (@25 SACHET/PACK)",
+      "Column_2": null,
+      "Column_3": "SACHET",
+      "Column_4": 221,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "TOMATO SAUCE @5500 GRAM/JERIGEN",
+      "Column_2": null,
+      "Column_3": "GRAM",
+      "Column_4": 14,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "TOPPING MIE AYAM @50 GR/PORSI",
+      "Column_2": null,
+      "Column_3": "PORSI",
+      "Column_4": 4601,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "TOPPING NASGOR (3 SLICE FISHCAKE & 10 SLICE BAKSO IKAN/PORSI)",
+      "Column_2": null,
+      "Column_3": "PORSI",
+      "Column_4": 2351,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "UDANG FRESH (@500 GR/PACK) @50 GR/PORSI",
+      "Column_2": null,
+      "Column_3": "GRAM",
+      "Column_4": 80,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "UDANG KEJU (@25 PCS /PACK) @3 PCS/PORSI",
+      "Column_2": null,
+      "Column_3": "PCS",
+      "Column_4": 2835,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "VITZIN (@1000GR / PACK)",
+      "Column_2": null,
+      "Column_3": "GRAM",
+      "Column_4": 49,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "WAGYU (SANTORI) @100 GR/PORSI",
+      "Column_2": null,
+      "Column_3": "PORSI",
+      "Column_4": 25282,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "WIJEN (@1000 GR/PACK)",
+      "Column_2": null,
+      "Column_3": "GRAM",
+      "Column_4": 70,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "WONTON @25 PCS/PACK",
+      "Column_2": null,
+      "Column_3": "PCS",
+      "Column_4": 2258,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "WORTEL",
+      "Column_2": null,
+      "Column_3": "GRAM",
+      "Column_4": 20,
+      "Column_5": 0
+    },
+    {
+      "INVENTORI FOOD & SNACK": "WRAPPING ROLL",
+      "Column_2": null,
+      "Column_3": "ROLL",
+      "Column_4": 151250,
+      "Column_5": 0
+    }
+  ]
+}

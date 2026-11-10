@@ -491,10 +491,11 @@ function applyReplaceHargaKemasanToSheet(payload) {
   }
 
   var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var sheet = payload.sheetName ? ss.getSheetByName(payload.sheetName) : ss.getActiveSheet();
-  if (!sheet) {
-    sheet = ss.getActiveSheet();
-  }
+  // Selalu targetkan Sheet yang sedang aktif saat ini sesuai instruksi
+  var sheet = ss.getActiveSheet();
+
+  var highlightGreen = payload.highlightGreen !== false && (payload.highlightGreen || payload.highlightColor);
+  var highlightColor = payload.highlightColor || "#dcfce7";
 
   var updatedList = [];
   for (var i = 0; i < payload.items.length; i++) {
@@ -504,15 +505,32 @@ function applyReplaceHargaKemasanToSheet(payload) {
     var val = Number(item.newValue);
 
     if (row > 0 && col > 0 && !isNaN(val)) {
+      // 1. Perbarui nilai KEMASAN jika ada perubahan kemasan manual
+      if (item.kemasanCol && item.newKemasan !== undefined && item.newKemasan !== null && !isNaN(Number(item.newKemasan))) {
+        var kCol = Number(item.kemasanCol);
+        if (kCol > 0) {
+          var kCell = sheet.getRange(row, kCol);
+          kCell.setValue(Number(item.newKemasan));
+          if (highlightGreen) {
+            kCell.setBackground(highlightColor);
+          }
+        }
+      }
+
+      // 2. Perbarui nilai HARGA / KEMASAN dengan harga manual / baru
       var cell = sheet.getRange(row, col);
       cell.setValue(val);
+      if (highlightGreen) {
+        cell.setBackground(highlightColor);
+      }
       updatedList.push({
         row: row,
         col: col,
         cellAddress: item.cellAddress || (colNumberToLetter_(col) + row),
         bahan: item.bahan || "",
         oldValue: item.oldValue,
-        newValue: val
+        newValue: val,
+        newKemasan: item.newKemasan
       });
     }
   }
@@ -613,6 +631,7 @@ function scanCentralSheetsDirectly() {
 
 /**
  * Parser internal untuk mengekstrak kolom dan baris dari 2D sheet array
+ * Fleksibel terhadap penambahan kolom baru dan penggantian nama kolom.
  */
 function parseScannedGrid_(grid, displayGrid, sheetName, defaultCategory) {
   var headerRowIdx = -1;
@@ -621,12 +640,12 @@ function parseScannedGrid_(grid, displayGrid, sheetName, defaultCategory) {
   var kategoriColIdx = -1;
   var periodCols = [];
 
-  // Periksa 15 baris pertama untuk mencari baris header
+  // 1. Periksa 15 baris pertama untuk mencari baris header
   for (var r = 0; r < Math.min(grid.length, 15); r++) {
     var row = grid[r];
     for (var c = 0; c < row.length; c++) {
       var cellText = String(row[c] || "").trim().toUpperCase();
-      if (cellText === "ITEM" || cellText === "NAMA ITEM" || cellText === "NAMA BAHAN" || cellText === "BAHAN") {
+      if (/^(ITEM|NAMA ITEM|NAMA BAHAN|BAHAN|NAMA BARANG|BARANG|PRODUK|NAMA PRODUK|MATERIAL|RAW MATERIAL)$/i.test(cellText)) {
         headerRowIdx = r;
         itemColIdx = c;
         break;
@@ -635,33 +654,105 @@ function parseScannedGrid_(grid, displayGrid, sheetName, defaultCategory) {
     if (headerRowIdx !== -1) break;
   }
 
+  // Fallback jika tidak ada kata kunci umum, cari baris yang memiliki beberapa kolom teks header
+  if (headerRowIdx === -1) {
+    for (var r = 0; r < Math.min(grid.length, 5); r++) {
+      var nonBlankCount = 0;
+      for (var c = 0; c < grid[r].length; c++) {
+        if (String(grid[r][c] || "").trim()) nonBlankCount++;
+      }
+      if (nonBlankCount >= 3) {
+        headerRowIdx = r;
+        itemColIdx = 1; // Default kolom kedua atau pertama
+        break;
+      }
+    }
+  }
+
   if (headerRowIdx === -1) {
     return {
       sheetName: sheetName,
       kategori: defaultCategory,
       items: [],
       periodCols: [],
-      error: "Kolom header 'ITEM' tidak ditemukan"
+      error: "Baris header tabel tidak ditemukan"
     };
   }
 
   var headerRow = grid[headerRowIdx];
+
+  // 2. Deteksi kolom Item, Gramasi/Satuan, dan Kategori
   for (var c = 0; c < headerRow.length; c++) {
-    var colName = String(headerRow[c] || "").trim().toUpperCase();
-    if (colName === "GRAMASI" || colName === "SATUAN" || colName === "UNIT") {
+    var dispH = (displayGrid && displayGrid[headerRowIdx]) ? displayGrid[headerRowIdx][c] : "";
+    var colName = String(dispH || headerRow[c] || "").trim();
+    var upperCol = colName.toUpperCase();
+
+    if (itemColIdx === -1 && /^(ITEM|NAMA ITEM|NAMA BAHAN|BAHAN|NAMA BARANG|BARANG|PRODUK|NAMA PRODUK|MATERIAL|RAW MATERIAL)$/i.test(upperCol)) {
+      itemColIdx = c;
+    } else if (gramasiColIdx === -1 && /^(GRAMASI|SATUAN|UNIT|UOM|BERAT|KEMASAN|QTY|PACKING|UKURAN)$/i.test(upperCol)) {
       gramasiColIdx = c;
-    } else if (colName === "KATEGORI" || colName === "CATEGORY") {
+    } else if (kategoriColIdx === -1 && /^(KATEGORI|CATEGORY|JENIS|GROUP|TIPE)$/i.test(upperCol)) {
       kategoriColIdx = c;
-    } else if (colName.indexOf("PL UPDATE") !== -1 || colName.indexOf("PL CENTRAL") !== -1) {
-      var cleanCol = colName
+    }
+  }
+
+  if (itemColIdx === -1) {
+    // Jika masih -1, ambil kolom non-angka pertama
+    for (var c = 0; c < headerRow.length; c++) {
+      var upperCol = String(headerRow[c] || "").trim().toUpperCase();
+      if (!/^(NO|NO\.|NUM|#|ID|KODE)$/i.test(upperCol)) {
+        itemColIdx = c;
+        break;
+      }
+    }
+  }
+
+  // 3. Deteksi seluruh kolom harga / periode yang ditambahkan atau diubah namanya
+  var seenCols = {};
+  for (var c = 0; c < headerRow.length; c++) {
+    if (c === itemColIdx || c === gramasiColIdx || c === kategoriColIdx) continue;
+
+    var dispH = (displayGrid && displayGrid[headerRowIdx]) ? displayGrid[headerRowIdx][c] : "";
+    var colName = String(dispH || headerRow[c] || "").trim();
+    if (!colName) continue;
+
+    var upperCol = colName.toUpperCase();
+
+    // Abaikan kolom non-harga
+    if (/^(NO|NO\.|NOMOR|NUM|#|ID|KODE|CODE|NOTE|NOTES|KETERANGAN|STATUS|CEK|CHECK)$/i.test(upperCol)) {
+      continue;
+    }
+
+    // Deteksi jika mengandung indikator harga/periode ATAU memiliki angka harga di datanya
+    var hasPriceKeyword = /PL|PRICE|HARGA|TARIF|BIAYA|UPDATE|CENTRAL|PUSAT|GUDANG|STORAGE|KITCHEN|SUPPLIER|VENDOR|CABANG/i.test(upperCol);
+    var hasDateIndicator = /JAN|FEB|MAR|APR|MEI|MAY|JUN|JUL|AGU|AUG|SEP|OKT|OCT|NOV|DES|DEC|\d{4}|\d{1,2}[\/\-\s]\d{1,2}/i.test(upperCol);
+
+    var hasNumericPrices = false;
+    for (var r = headerRowIdx + 1; r < Math.min(grid.length, headerRowIdx + 40); r++) {
+      var cellVal = grid[r][c];
+      var cellDisp = displayGrid && displayGrid[r] ? displayGrid[r][c] : "";
+      var p = parseCleanPrice_(cellVal, cellDisp);
+      if (p !== null && p > 0) {
+        hasNumericPrices = true;
+        break;
+      }
+    }
+
+    if (hasPriceKeyword || hasDateIndicator || hasNumericPrices) {
+      var cleanCol = upperCol
         .replace(/_\d+$/, "")
         .replace(/\s+/g, " ")
         .replace("2 JULI 2027", "2 JULI 2026")
         .trim();
-      periodCols.push({ colIdx: c, name: cleanCol });
+
+      if (!seenCols[cleanCol]) {
+        seenCols[cleanCol] = true;
+        periodCols.push({ colIdx: c, name: cleanCol, rawName: colName });
+      }
     }
   }
 
+  // 4. Kumpulkan seluruh baris item & nilai harganya
   var items = [];
   for (var r = headerRowIdx + 1; r < grid.length; r++) {
     var row = grid[r];
@@ -697,17 +788,10 @@ function parseScannedGrid_(grid, displayGrid, sheetName, defaultCategory) {
     items.push(itemObj);
   }
 
-  var uniquePeriods = [];
-  var seenP = {};
-  periodCols.forEach(function (p) {
-    if (!seenP[p.name]) {
-      seenP[p.name] = true;
-      uniquePeriods.push(p.name);
-    }
-  });
+  var uniquePeriods = periodCols.map(function (p) { return p.name; });
 
   return {
-    id: "scanned-" + defaultCategory.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+    id: "inv-" + defaultCategory.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
     name: sheetName,
     sheetName: sheetName,
     kategori: defaultCategory,
@@ -1004,4 +1088,649 @@ function generateCompactGsCodeFromDatasets_(scannedDatasets, scannedAt) {
     presetEntries.join(",\n") + "\n" +
     "  ];\n" +
     "}\n";
+}
+
+/**
+ * ============================================================================
+ * FITUR 05: SCANNER SHEET INVENTORY CIAMSO SBY OKT (9 KATEGORI TABEL)
+ * ============================================================================
+ * Membaca langsung tabel dari sheet "INVENTORY CIAMSO SBY OKT" (atau yang memuat nama CIAMSO).
+ * Memisahkan dan mengelompokkan data berdasarkan 9 kategori tabel.
+ */
+function scanCiamsoSheetsDirectly(customSheetName) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheets = ss.getSheets();
+  var targetSheets = [];
+
+  if (customSheetName) {
+    var custom = ss.getSheetByName(customSheetName);
+    if (custom) targetSheets.push(custom);
+  }
+
+  if (targetSheets.length === 0) {
+    for (var s = 0; s < sheets.length; s++) {
+      var sName = sheets[s].getName().trim();
+      if (/ciamso/i.test(sName)) {
+        targetSheets.push(sheets[s]);
+      }
+    }
+  }
+
+  // Jika tidak ada sheet bernama ciamso, periksa active sheet
+  if (targetSheets.length === 0) {
+    var activeSh = ss.getActiveSheet();
+    if (activeSh) targetSheets.push(activeSh);
+  }
+
+  if (targetSheets.length === 0) {
+    throw new Error("Tidak ditemukan sheet dengan nama 'INVENTORY CIAMSO SBY OKT' atau mengandung kata 'CIAMSO'.");
+  }
+
+  var combinedCategoriesMap = {};
+  var allDiscoveredPeriods = [];
+  var periodSet = {};
+  var totalItems = 0;
+  var scannedSheetNames = [];
+
+  for (var i = 0; i < targetSheets.length; i++) {
+    var sh = targetSheets[i];
+    var range = sh.getDataRange();
+    if (!range || range.getNumRows() < 2) continue;
+
+    scannedSheetNames.push(sh.getName());
+    var grid = range.getValues();
+    var displayGrid = range.getDisplayValues();
+    var parsed = parseCiamsoSheetGrid_(grid, displayGrid, sh.getName());
+
+    totalItems += parsed.totalItems;
+    parsed.periods.forEach(function (p) {
+      if (!periodSet[p]) {
+        periodSet[p] = true;
+        allDiscoveredPeriods.push(p);
+      }
+    });
+
+    Object.keys(parsed.categoriesMap).forEach(function (cat) {
+      if (!combinedCategoriesMap[cat]) {
+        combinedCategoriesMap[cat] = [];
+      }
+      combinedCategoriesMap[cat] = combinedCategoriesMap[cat].concat(parsed.categoriesMap[cat]);
+    });
+  }
+
+  var categoryList = Object.keys(combinedCategoriesMap);
+  if (categoryList.length === 0 || totalItems === 0) {
+    throw new Error("Gagal membaca item valid dari sheet " + scannedSheetNames.join(", ") + ". Pastikan sheet memiliki kolom nama bahan dan harga.");
+  }
+
+  var categoryDatasets = [];
+  var allItemsFlat = [];
+  var catIdx = 1;
+
+  categoryList.forEach(function (catName) {
+    var items = combinedCategoriesMap[catName];
+    categoryDatasets.push({
+      id: "ciamso-cat-" + (catIdx++),
+      name: catName,
+      category: catName,
+      itemCount: items.length,
+      items: items
+    });
+    allItemsFlat = allItemsFlat.concat(items);
+  });
+
+  var latestPeriod = allDiscoveredPeriods.length > 0 ? allDiscoveredPeriods[allDiscoveredPeriods.length - 1] : "OKTOBER 2026";
+
+  return {
+    success: true,
+    scannedAt: new Date().toISOString(),
+    spreadsheetName: ss.getName(),
+    scannedSheetNames: scannedSheetNames,
+    totalItems: totalItems,
+    totalCategories: categoryList.length,
+    categoryList: categoryList,
+    allPeriods: allDiscoveredPeriods,
+    latestPeriod: latestPeriod,
+    categories: categoryDatasets,
+    allItems: allItemsFlat
+  };
+}
+
+/**
+ * Parser internal untuk memisahkan tabel sheet Ciamso per kategori
+ */
+function parseCiamsoSheetGrid_(grid, displayGrid, defaultSheetName) {
+  var categoriesMap = {};
+  var currentCategory = defaultSheetName || "UMUM";
+  var itemCol = -1;
+  var gramasiCol = -1;
+  var kategoriCol = -1;
+  var priceCols = [];
+  var discoveredPeriods = [];
+  var totalItems = 0;
+
+  var META_REGEX = /^(NO|NOMOR|ID|KODE|ITEM|NAMA|BAHAN|BARANG|PRODUK|MATERIAL|GRAMASI|SATUAN|UNIT|UOM|BERAT|KEMASAN|QTY|PACKING|UKURAN|KATEGORI|CATEGORY|JENIS|GROUP|TIPE|NOTE|NOTES|KETERANGAN|STATUS|CEK|KET|CHECK)$/i;
+
+  for (var r = 0; r < grid.length; r++) {
+    var rowVals = grid[r] || [];
+    var rowDisplays = displayGrid ? (displayGrid[r] || []) : rowVals;
+
+    var nonEmptyCount = 0;
+    var firstNonEmptyIdx = -1;
+    var firstNonEmptyVal = "";
+
+    for (var c = 0; c < rowVals.length; c++) {
+      var v = String(rowDisplays[c] || rowVals[c] || "").trim();
+      if (v) {
+        nonEmptyCount++;
+        if (firstNonEmptyIdx === -1) {
+          firstNonEmptyIdx = c;
+          firstNonEmptyVal = v;
+        }
+      }
+    }
+
+    if (nonEmptyCount === 0) continue;
+
+    // Cek judul kategori / section banner
+    var upperFirst = firstNonEmptyVal.toUpperCase();
+    var isCategoryBanner = (nonEmptyCount <= 3 && (
+      upperFirst.indexOf("KATEGORI") !== -1 ||
+      upperFirst.indexOf("CATEGORY") !== -1 ||
+      upperFirst.indexOf("GROUP") !== -1 ||
+      upperFirst.indexOf("TABEL") !== -1 ||
+      (!/\d/.test(upperFirst) && upperFirst.length > 3 && upperFirst.indexOf("ITEM") === -1 && upperFirst.indexOf("BAHAN") === -1)
+    ));
+
+    if (isCategoryBanner && firstNonEmptyIdx <= 2) {
+      var cleanCat = firstNonEmptyVal
+        .replace(/^(KATEGORI|CATEGORY|GROUP|TABEL)\s*[:\-]?\s*/i, "")
+        .replace(/^\d+[\.\)\-]\s*/, "")
+        .trim();
+      if (cleanCat.length > 2) {
+        currentCategory = cleanCat.toUpperCase();
+        if (!categoriesMap[currentCategory]) {
+          categoriesMap[currentCategory] = [];
+        }
+        itemCol = -1;
+        gramasiCol = -1;
+        kategoriCol = -1;
+        priceCols = [];
+        continue;
+      }
+    }
+
+    // Cek header kolom
+    var isHeaderRow = false;
+    var tempItemCol = -1;
+    var tempGramasiCol = -1;
+    var tempKategoriCol = -1;
+    var tempPriceCols = [];
+
+    for (var col = 0; col < rowVals.length; col++) {
+      var rawH = String(rowDisplays[col] || rowVals[col] || "").trim();
+      var normH = rawH.toUpperCase().replace(/[^A-Z0-9]/g, "");
+
+      if (/^(ITEM|NAMABAHAN|BAHAN|NAMABARANG|BARANG|PRODUK|NAMAPRODUK|MATERIAL)$/i.test(normH)) {
+        tempItemCol = col;
+        isHeaderRow = true;
+      } else if (/^(GRAMASI|SATUAN|UNIT|UOM|BERAT|KEMASAN|QTY|PACKING|UKURAN)$/i.test(normH)) {
+        tempGramasiCol = col;
+      } else if (/^(KATEGORI|CATEGORY|JENIS|GROUP|TIPE)$/i.test(normH)) {
+        tempKategoriCol = col;
+      } else if (!META_REGEX.test(normH) && rawH.length > 0) {
+        tempPriceCols.push({ colIdx: col, colName: rawH.toUpperCase().replace(/\s+/g, " ").trim() });
+      }
+    }
+
+    if (isHeaderRow && tempItemCol >= 0) {
+      itemCol = tempItemCol;
+      gramasiCol = tempGramasiCol;
+      kategoriCol = tempKategoriCol;
+      if (tempPriceCols.length > 0) {
+        priceCols = tempPriceCols;
+        for (var p = 0; p < priceCols.length; p++) {
+          if (discoveredPeriods.indexOf(priceCols[p].colName) === -1) {
+            discoveredPeriods.push(priceCols[p].colName);
+          }
+        }
+      }
+      continue;
+    }
+
+    // Baris Data Item
+    if (itemCol >= 0) {
+      var rawItemName = String(rowDisplays[itemCol] || rowVals[itemCol] || "").trim();
+      if (!rawItemName || /^\d+$/.test(rawItemName) || /^(ITEM|NAMA|NO|TOTAL)$/i.test(rawItemName)) {
+        continue;
+      }
+
+      var rowCategory = currentCategory;
+      if (kategoriCol >= 0) {
+        var catVal = String(rowDisplays[kategoriCol] || rowVals[kategoriCol] || "").trim();
+        if (catVal) rowCategory = catVal.toUpperCase();
+      }
+
+      var gramasiVal = gramasiCol >= 0
+        ? String(rowDisplays[gramasiCol] || rowVals[gramasiCol] || "-").trim().toUpperCase()
+        : "-";
+
+      var priceByCol = {};
+      var latestPrice = null;
+
+      for (var pi = 0; pi < priceCols.length; pi++) {
+        var pCol = priceCols[pi];
+        var val = rowVals[pCol.colIdx];
+        var num = parseCleanPrice_(val);
+        if (num !== null && num > 0) {
+          priceByCol[pCol.colName] = num;
+          latestPrice = num;
+        }
+      }
+
+      if (latestPrice === null) {
+        for (var ci = 0; ci < rowVals.length; ci++) {
+          if (ci !== itemCol && ci !== gramasiCol && ci !== kategoriCol) {
+            var nVal = parseCleanPrice_(rowVals[ci]);
+            if (nVal !== null && nVal > 0) {
+              latestPrice = nVal;
+              var fallbackCol = "HARGA " + (discoveredPeriods[0] || "OKTOBER 2026");
+              priceByCol[fallbackCol] = nVal;
+              if (discoveredPeriods.indexOf(fallbackCol) === -1) discoveredPeriods.push(fallbackCol);
+              break;
+            }
+          }
+        }
+      }
+
+      if (!categoriesMap[rowCategory]) {
+        categoriesMap[rowCategory] = [];
+      }
+
+      categoriesMap[rowCategory].push({
+        id: "ci-" + (++totalItems),
+        itemName: rawItemName,
+        kategori: rowCategory,
+        gramasi: gramasiVal,
+        priceByCol: priceByCol,
+        latestPrice: latestPrice
+      });
+    }
+  }
+
+  return {
+    categoriesMap: categoriesMap,
+    periods: discoveredPeriods,
+    totalItems: totalItems
+  };
+}
+
+/**
+ * Menyimpan data scanning Ciamso ke DocumentProperties & in-memory backup
+ */
+function updateCiamsoDataPembandingFromLiveScan(customSheetName) {
+  var scanRes = scanCiamsoSheetsDirectly(customSheetName);
+  if (!scanRes || !scanRes.categories || scanRes.categories.length === 0) {
+    throw new Error("Tidak ada kategori/item yang berhasil discan dari sheet Ciamso.");
+  }
+
+  var docProps = PropertiesService.getDocumentProperties();
+  var prevSnapshot = docProps.getProperty("CIAMSO_DATASETS_SNAPSHOT");
+  if (prevSnapshot) {
+    var ts = Utilities.formatDate(new Date(), Session.getScriptTimeZone() || "GMT+7", "yyyyMMdd-HHmmss");
+    var histList = [];
+    try {
+      var rawHist = docProps.getProperty("CIAMSO_HISTORY_LIST");
+      if (rawHist) histList = JSON.parse(rawHist);
+    } catch (e) {}
+    histList.unshift({
+      timestamp: ts,
+      updatedAt: new Date().toISOString(),
+      itemCount: scanRes.totalItems,
+      categoryCount: scanRes.totalCategories,
+      sourceSheet: scanRes.scannedSheetNames.join(", ")
+    });
+    if (histList.length > 10) histList = histList.slice(0, 10);
+    docProps.setProperty("CIAMSO_HISTORY_LIST", JSON.stringify(histList));
+  }
+
+  var summarySnapshot = {
+    scannedAt: scanRes.scannedAt,
+    totalItems: scanRes.totalItems,
+    totalCategories: scanRes.totalCategories,
+    categoryList: scanRes.categoryList,
+    latestPeriod: scanRes.latestPeriod,
+    sheetNames: scanRes.scannedSheetNames
+  };
+  docProps.setProperty("CIAMSO_DATASETS_SNAPSHOT", JSON.stringify(summarySnapshot));
+
+  return scanRes;
+}
+
+/**
+ * Mendapatkan daftar preset Ciamso yang tersimpan
+ */
+function getCiamsoInventoryPresets() {
+  var docProps = PropertiesService.getDocumentProperties();
+  var raw = docProps.getProperty("CIAMSO_DATASETS_SNAPSHOT");
+  if (raw) {
+    try {
+      return JSON.parse(raw);
+    } catch (e) {}
+  }
+  return null;
+}
+
+/**
+ * ============================================================================
+ * FITUR 06: PEMBANDING HPP OUTLET CIAMSO (BUAT TABEL PEMBANDING 2 WARNA)
+ * ============================================================================
+ * Menuliskan tabel pembanding HPP di samping tabel resep pada sheet:
+ * - 2 Warna: Hijau (<= HPP) & Merah (> HPP), Kolom NOTE.
+ * - Fokus harga Ciamso bulan terbaru.
+ */
+function createCiamsoHppComparisonTable(payload) {
+  if (!payload || !payload.recipeRange || !Array.isArray(payload.comparisonRows)) {
+    throw new Error("Payload tidak lengkap untuk membuat tabel pembanding Ciamso.");
+  }
+
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = payload.sheetName ? ss.getSheetByName(payload.sheetName) : ss.getActiveSheet();
+  if (!sheet) sheet = ss.getActiveSheet();
+
+  var rRange = payload.recipeRange;
+  var rows = payload.comparisonRows;
+  var periodName = payload.periodName || "HARGA CIAMSO TERBARU";
+
+  var writeStartCol = rRange.endCol + 2; // Beri jarak 1 kolom kosong
+  var writeStartRow = rRange.startRow;
+
+  // Header tabel pembanding Ciamso (2 Kolom: Harga Ciamso & Note)
+  var headers = ["HARGA CIAMSO (" + periodName + ")", "NOTE STATUS"];
+  var headerRange = sheet.getRange(writeStartRow, writeStartCol, 1, 2);
+  headerRange.setValues([headers]);
+  headerRange.setFontWeight("bold");
+  headerRange.setFontColor("#ffffff");
+  headerRange.setHorizontalAlignment("center");
+  headerRange.setBackgrounds([["#1e3a8a", "#0f172a"]]); // Navy & Slate
+
+  var values = [];
+  var backgrounds = [];
+  var fontColors = [];
+  var fontWeights = [];
+
+  for (var i = 0; i < rows.length; i++) {
+    var item = rows[i];
+    var cPrice = item.hargaCiamso;
+    var status = item.status;
+    var note = item.note || "";
+
+    var priceDisplay = (cPrice !== null && cPrice !== undefined && cPrice > 0)
+      ? cPrice
+      : "-";
+
+    var rowVals = [priceDisplay, note];
+    var rowBgs = ["#ffffff", "#ffffff"];
+    var rowColors = ["#1e293b", "#1e293b"];
+    var rowWeights = ["normal", "normal"];
+
+    if (status === "HEMAT" || status === "SAMA") {
+      rowBgs[0] = "#dcfce7"; // Hijau Muda
+      rowColors[0] = "#166534";
+      rowWeights[0] = "bold";
+
+      rowBgs[1] = "#dcfce7";
+      rowColors[1] = "#166534";
+      rowWeights[1] = "bold";
+    } else if (status === "NAIK") {
+      rowBgs[0] = "#fee2e2"; // Merah Muda
+      rowColors[0] = "#991b1b";
+      rowWeights[0] = "bold";
+
+      rowBgs[1] = "#fee2e2";
+      rowColors[1] = "#991b1b";
+      rowWeights[1] = "bold";
+    } else {
+      rowBgs[0] = "#f8fafc";
+      rowColors[0] = "#64748b";
+      rowBgs[1] = "#f8fafc";
+      rowColors[1] = "#64748b";
+    }
+
+    values.push(rowVals);
+    backgrounds.push(rowBgs);
+    fontColors.push(rowColors);
+    fontWeights.push(rowWeights);
+  }
+
+  if (values.length > 0) {
+    var dataRange = sheet.getRange(writeStartRow + 1, writeStartCol, values.length, 2);
+    dataRange.setValues(values);
+    dataRange.setBackgrounds(backgrounds);
+    dataRange.setFontColors(fontColors);
+    dataRange.setFontWeights(fontWeights);
+    dataRange.setBorder(true, true, true, true, true, true, "#cbd5e1", SpreadsheetApp.BorderStyle.SOLID);
+
+    // Format kolom harga sebagai Rupiah
+    var priceColRange = sheet.getRange(writeStartRow + 1, writeStartCol, values.length, 1);
+    priceColRange.setNumberFormat("#,##0");
+    priceColRange.setHorizontalAlignment("right");
+  }
+
+  return {
+    success: true,
+    sheetName: sheet.getName(),
+    startCell: colNumberToLetter_(writeStartCol) + writeStartRow,
+    totalRows: values.length
+  };
+}
+
+/**
+ * ============================================================================
+ * FITUR 06: REPLACE DATA (REPLACE ALL BAHAN DI SHEET)
+ * ============================================================================
+ * Memindai seluruh isi sheet aktif untuk mencari seluruh kemunculan bahan resep
+ * dan lokasi sel HARGA / KEMASAN-nya di Google Sheets.
+ */
+function scanRecipeRowsFromEntireSheet(customSheetName) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = customSheetName ? ss.getSheetByName(customSheetName) : ss.getActiveSheet();
+  if (!sheet) sheet = ss.getActiveSheet();
+
+  var dataRange = sheet.getDataRange();
+  var numRows = dataRange.getNumRows();
+  var numCols = dataRange.getNumColumns();
+
+  if (numRows < 2 || numCols < 4) {
+    throw new Error("Sheet '" + sheet.getName() + "' tidak memiliki data baris/kolom resep yang cukup.");
+  }
+
+  var rawValues = dataRange.getValues();
+  var displayValues = dataRange.getDisplayValues();
+
+  // 1. Deteksi Kolom Header (Bahan, Kemasan, Harga/Kemasan, Preparetion)
+  var colBahan = -1;
+  var colKemasan = -1;
+  var colHargaKemasan = -1;
+  var colGramasi = -1;
+  var colSatuan = -1;
+  var colPrep = -1;
+  var headerRowIdx = -1;
+
+  for (var r = 0; r < Math.min(15, numRows); r++) {
+    var row = rawValues[r];
+    for (var c = 0; c < numCols; c++) {
+      var val = String(row[c] || "").trim().toLowerCase();
+      if (/^bahan/i.test(val) || /^nama\s*bahan/i.test(val)) colBahan = c;
+      if (/kemasan/i.test(val) && !/harga/i.test(val)) colKemasan = c;
+      if (/harga\s*[\/\\]?\s*kemasan/i.test(val)) colHargaKemasan = c;
+      if (/^gramasi|^qty|^berat/i.test(val)) colGramasi = c;
+      if (/^satuan|^unit/i.test(val)) colSatuan = c;
+      if (/preparetion|preparation|menu|resep/i.test(val)) colPrep = c;
+    }
+    if (colBahan !== -1 && colHargaKemasan !== -1) {
+      headerRowIdx = r;
+      break;
+    }
+  }
+
+  // Fallback jika header tidak terdeteksi secara eksplisit:
+  if (colBahan === -1 || colHargaKemasan === -1) {
+    if (numCols >= 10) {
+      // Format 13 kolom: No, Preparetion, Bahan, Gramasi, SATUAN, KEMASAN, HARGA/KEMASAN...
+      colPrep = 1;
+      colBahan = 2;
+      colGramasi = 3;
+      colSatuan = 4;
+      colKemasan = 5;
+      colHargaKemasan = 6;
+      headerRowIdx = 0;
+    } else {
+      // Format 8 kolom: Bahan, Gramasi, SATUAN, KEMASAN, HARGA/KEMASAN...
+      colBahan = 0;
+      colGramasi = 1;
+      colSatuan = 2;
+      colKemasan = 3;
+      colHargaKemasan = 4;
+      headerRowIdx = 0;
+    }
+  }
+
+  var items = [];
+  var currentRecipe = "Resep";
+  var startRow = headerRowIdx >= 0 ? headerRowIdx + 1 : 0;
+
+  for (var r = startRow; r < numRows; r++) {
+    var rowVals = rawValues[r];
+    if (!rowVals || rowVals.length === 0) continue;
+
+    // Deteksi Pergantian Nama Resep / Menu
+    if (colPrep >= 0) {
+      var prepVal = String(rowVals[colPrep] || "").trim();
+      if (prepVal && !/^(total|subtotal|hpp|selling|presentase|margin)/i.test(prepVal)) {
+        currentRecipe = prepVal;
+      }
+    }
+
+    var rawBahan = rowVals[colBahan];
+    if (rawBahan === null || rawBahan === undefined || rawBahan === "") continue;
+
+    var bahanStr = String(rawBahan).trim();
+    if (!bahanStr) continue;
+
+    // Lewati baris header, total, subtotal
+    if (/^(total|subtotal|sub\s*total|grand\s*total|hpp|presentase|selling\s*price|bahan|nama\s*bahan|no\.?)$/i.test(bahanStr)) {
+      continue;
+    }
+    if (!isNaN(Number(bahanStr))) {
+      continue;
+    }
+
+    var kemasanNum = colKemasan >= 0 ? parseCleanPrice_(rowVals[colKemasan]) : 1;
+    if (!kemasanNum || kemasanNum <= 0) kemasanNum = 1;
+
+    var hargaKemasanNum = colHargaKemasan >= 0 ? parseCleanPrice_(rowVals[colHargaKemasan]) : null;
+    var hargaKemasanDisplay = colHargaKemasan >= 0 ? displayValues[r][colHargaKemasan] : "";
+
+    var sheetRowNumber = r + 1; // 1-based row di Google Sheets
+    var sheetColHargaNumber = colHargaKemasan + 1; // 1-based col di Google Sheets
+    var cellAddress = colNumberToLetter_(sheetColHargaNumber) + sheetRowNumber;
+
+    items.push({
+      sheetRow: sheetRowNumber,
+      sheetCol: sheetColHargaNumber,
+      cellAddress: cellAddress,
+      recipe: currentRecipe,
+      bahan: bahanStr,
+      gramasi: colGramasi >= 0 ? parseCleanPrice_(rowVals[colGramasi]) : null,
+      satuan: colSatuan >= 0 ? String(rowVals[colSatuan] || "").trim() : "",
+      kemasan: kemasanNum,
+      hargaKemasan: hargaKemasanNum,
+      hargaKemasanDisplay: hargaKemasanDisplay
+    });
+  }
+
+  return {
+    success: true,
+    sheetName: sheet.getName(),
+    totalRowsScanned: numRows,
+    totalItemsFound: items.length,
+    detectedColumns: {
+      colPrep: colPrep >= 0 ? colNumberToLetter_(colPrep + 1) : null,
+      colBahan: colNumberToLetter_(colBahan + 1),
+      colKemasan: colKemasan >= 0 ? colNumberToLetter_(colKemasan + 1) : null,
+      colHargaKemasan: colNumberToLetter_(colHargaKemasan + 1)
+    },
+    items: items
+  };
+}
+
+/**
+ * Menerapkan penggantian nilai HARGA / KEMASAN di Sheet secara massal
+ * untuk seluruh sel yang ditentukan dan mewarnai dengan hijau (#dcfce7).
+ * payload: {
+ *   sheetName: string,
+ *   highlightColor: string, // default "#dcfce7"
+ *   updates: [
+ *     { sheetRow: number, sheetCol: number, cellAddress: string, newValue: number, oldValue: number, bahan: string, recipe: string }
+ *   ]
+ * }
+ */
+function replaceAllBahanInActiveSheet(payload) {
+  if (!payload || !Array.isArray(payload.updates) || payload.updates.length === 0) {
+    throw new Error("Tidak ada item harga yang dipilih untuk di-replace.");
+  }
+
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  // Selalu targetkan Sheet yang sedang aktif saat ini sesuai instruksi
+  var sheet = ss.getActiveSheet();
+
+  var highlightColor = payload.highlightColor || "#dcfce7";
+  var updatedList = [];
+
+  for (var i = 0; i < payload.updates.length; i++) {
+    var u = payload.updates[i];
+    var row = Number(u.sheetRow);
+    var col = Number(u.sheetCol);
+    var newVal = Number(u.newValue);
+
+    if (row > 0 && col > 0 && !isNaN(newVal)) {
+      // 1. Update nilai KEMASAN jika ada perubahan kemasan manual
+      if (u.kemasanCol && u.newKemasan !== undefined && u.newKemasan !== null && !isNaN(Number(u.newKemasan))) {
+        var kCol = Number(u.kemasanCol);
+        if (kCol > 0) {
+          var kCell = sheet.getRange(row, kCol);
+          kCell.setValue(Number(u.newKemasan));
+          if (highlightColor) {
+            kCell.setBackground(highlightColor);
+          }
+        }
+      }
+
+      // 2. Update nilai HARGA / KEMASAN
+      var cell = sheet.getRange(row, col);
+      cell.setValue(newVal);
+      if (highlightColor) {
+        cell.setBackground(highlightColor);
+      }
+      updatedList.push({
+        row: row,
+        col: col,
+        cellAddress: u.cellAddress || (colNumberToLetter_(col) + row),
+        bahan: u.bahan || "",
+        recipe: u.recipe || "",
+        oldValue: u.oldValue,
+        newValue: newVal,
+        newKemasan: u.newKemasan
+      });
+    }
+  }
+
+  return {
+    success: true,
+    sheetName: sheet.getName(),
+    totalUpdated: updatedList.length,
+    highlightColor: highlightColor,
+    updatedList: updatedList
+  };
 }

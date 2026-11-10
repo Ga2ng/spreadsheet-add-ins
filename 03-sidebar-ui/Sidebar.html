@@ -47,8 +47,10 @@ Menu fitur dipecah modular ke dalam file HTML terpisah:
         onchange="switchFeatureMode(this.value)"
         class="w-full text-xs font-semibold bg-emerald-900 text-white border border-emerald-500 rounded-md px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-white cursor-pointer"
       >
-        <option value="hpp-audit" selected>02. Pembanding HPP (2 Warna &amp; Auto Create Tabel)</option>
-        <option value="replace-hpp">03. Replace Harga HPP (Preview &amp; Apply ke Sheet)</option>
+        <option value="ciamso-pembanding" selected>05. Pembanding HPP Ciamso (Inventory Okt)</option>
+        <option value="ciamso-replace">06. Replace Data (Replace All Bahan di Sheet)</option>
+        <option value="hpp-audit">02. Pembanding HPP Central (2 Warna &amp; Auto Create Tabel)</option>
+        <option value="replace-hpp">03. Replace Harga HPP Central (Preview &amp; Apply ke Sheet)</option>
         <option value="scanner">04. Scanner Sheet (Central Storage &amp; Kitchen Live)</option>
         <option value="parser">01. Parser (Sheet Range → JSON)</option>
       </select>
@@ -66,19 +68,28 @@ Menu fitur dipecah modular ke dalam file HTML terpisah:
       var viewHpp = document.getElementById("viewHppAudit");
       var viewReplace = document.getElementById("viewReplaceHpp");
       var viewScanner = document.getElementById("viewScanner");
+      var viewCiamsoPem = document.getElementById("viewCiamsoPembanding");
+      var viewReplaceData = document.getElementById("viewReplaceData");
+      var featureSelect = document.getElementById("featureSelect");
       var subtitle = document.getElementById("headerSubtitle");
+
+      if (featureSelect && featureSelect.value !== mode) {
+        featureSelect.value = mode;
+      }
 
       if (viewParser) viewParser.classList.add("hidden");
       if (viewHpp) viewHpp.classList.add("hidden");
       if (viewReplace) viewReplace.classList.add("hidden");
       if (viewScanner) viewScanner.classList.add("hidden");
+      if (viewCiamsoPem) viewCiamsoPem.classList.add("hidden");
+      if (viewReplaceData) viewReplaceData.classList.add("hidden");
 
       if (mode === "parser") {
         if (viewParser) viewParser.classList.remove("hidden");
         if (subtitle) subtitle.textContent = "Mode: 01. Parser (Sheet Range → JSON)";
       } else if (mode === "replace-hpp") {
         if (viewReplace) viewReplace.classList.remove("hidden");
-        if (subtitle) subtitle.textContent = "Mode: 03. Replace Harga HPP (Preview & Apply ke Sheet)";
+        if (subtitle) subtitle.textContent = "Mode: 03. Replace Harga HPP Central (Preview & Apply ke Sheet)";
         if (typeof initReplaceHppView === "function") {
           initReplaceHppView();
         }
@@ -87,6 +98,18 @@ Menu fitur dipecah modular ke dalam file HTML terpisah:
         if (subtitle) subtitle.textContent = "Mode: 04. Scanner Sheet (Central Storage & Kitchen Live Scan)";
         if (typeof initScannerView === "function") {
           initScannerView();
+        }
+      } else if (mode === "ciamso-pembanding") {
+        if (viewCiamsoPem) viewCiamsoPem.classList.remove("hidden");
+        if (subtitle) subtitle.textContent = "Mode: 05. Pembanding HPP Ciamso (2 Warna & Auto Create Tabel)";
+        if (typeof initCiamsoPembandingView === "function") {
+          initCiamsoPembandingView();
+        }
+      } else if (mode === "ciamso-replace") {
+        if (viewReplaceData) viewReplaceData.classList.remove("hidden");
+        if (subtitle) subtitle.textContent = "Mode: 06. Replace Data (Replace All Bahan di Seluruh Sheet)";
+        if (typeof initReplaceDataView === "function") {
+          initReplaceDataView();
         }
       } else {
         if (viewHpp) viewHpp.classList.remove("hidden");
@@ -188,13 +211,22 @@ Menu fitur dipecah modular ke dalam file HTML terpisah:
     <!-- MENU 04: SCANNER SHEET CENTRAL STORAGE & KITCHEN (VIEW TERPISAH) -->
     <?!= include('ScannerView'); ?>
 
+    <!-- MENU 05: SCANNER INVENTORY CIAMSO SBY (VIEW TERPISAH) -->
+    <?!= include('CiamsoScannerView'); ?>
+
+    <!-- MENU 05: PEMBANDING HPP CIAMSO (VIEW TERPISAH) -->
+    <?!= include('CiamsoPembandingView'); ?>
+
+    <!-- MENU 06: REPLACE DATA (REPLACE ALL BAHAN SHEET) (VIEW TERPISAH) -->
+    <?!= include('ReplaceDataView'); ?>
+
     <!-- MENU 01: PARSER SHEET RANGE -> JSON (VIEW TERPISAH) -->
     <?!= include('ParserView'); ?>
 
   </main>
 
   <footer class="py-2 px-3 text-center text-[11px] text-slate-400 border-t border-slate-200 bg-white">
-    Audit Data Tools • Modular Edition (01. Parser • 02. Pembanding • 03. Replace • 04. Scanner)
+    Audit Data Tools • Modular Edition (01. Parser • 02. Pembanding • 03. Replace • 04. Scanner • 05. Ciamso Scan • 06. Ciamso HPP)
   </footer>
 
   <script>
