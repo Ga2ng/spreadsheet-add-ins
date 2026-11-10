@@ -1,0 +1,822 @@
+<!--
+===============================================================================
+MENU 03: REPLACE HARGA HPP VIEW (ReplaceHppView.html)
+===============================================================================
+Fitur:
+1. Membaca baris data resep / bahan HPP yang di-select di Google Sheets.
+2. Menggunakan Mesin Pembanding Akurasi 100% Identik dengan Menu 02 (Pembanding HPP):
+   - Scoring kemiripan teks tingkat tinggi + bonus relErr & exact match.
+   - Pencarian otomatis item companion jika kolom acuan belum terisi.
+   - Konversi cerdas per-gram/ml ke harga kemasan utuh jika kemasan > 1.
+3. User bebas memilih Kolom Acuan Harga Pengganti dari dropdown (PL CENTRAL 15 OKTOBER 2026, PL UPDATE, dsb).
+4. Pratinjau (Preview) Lengkap Sebelum Apply:
+   - Alamat Sel target HARGA/KEMASAN (misal F5, F6)
+   - Harga Lama vs Harga Baru dari Kolom Terpilih
+   - 2 Warna Selisih: Hijau (<= HPP / Turun / Sesuai) & Merah (> HPP / Naik)
+   - Checkbox pilihan per baris (default dicentang)
+5. Tombol Eksekusi 1-Klik:
+   Menuliskan harga baru ke kolom HARGA / KEMASAN di Sheet.
+   Seluruh rumus di sebelah kanannya (Harga/gr, Total Harga Resep) otomatis ikut ter-update.
+===============================================================================
+-->
+<div id="viewReplaceHpp" class="hidden space-y-3">
+
+  <!-- STEP 1: PILIH KOLOM ACUAN HARGA & DATA PEMBANDING -->
+  <section class="bg-white rounded-lg border border-slate-200 p-3.5 shadow-sm space-y-2.5">
+    <div class="flex items-start justify-between gap-2">
+      <div>
+        <h2 class="text-xs font-bold uppercase tracking-wider text-emerald-800">1. Pilih Kolom Acuan Harga Pengganti</h2>
+        <p class="text-[11px] text-slate-500">
+          Pilih kolom periode harga yang akan menggantikan nilai HARGA/KEMASAN.
+        </p>
+      </div>
+      <span id="replaceInvCountBadge" class="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 shrink-0">
+        Memuat...
+      </span>
+    </div>
+
+    <!-- Dropdown Kolom Acuan Harga -->
+    <div>
+      <label for="selectRepHppSource" class="block text-[11px] font-bold text-slate-700 mb-1">
+        Kolom Acuan Harga Pengganti:
+      </label>
+      <select
+        id="selectRepHppSource"
+        onchange="recomputeReplaceHppPreview()"
+        class="w-full text-xs font-bold border border-slate-300 rounded px-2.5 py-1.5 bg-white text-emerald-900 focus:ring-1 focus:ring-emerald-500 cursor-pointer shadow-sm"
+      >
+        <option value="">Memuat kolom periode...</option>
+      </select>
+    </div>
+
+    <!-- Toggle Checklist Dataset Inventory -->
+    <details class="text-[11px]">
+      <summary class="cursor-pointer font-semibold text-emerald-700 hover:underline select-none">
+        Sumber Dataset Inventory (Central Kitchen &amp; Central Storage)
+      </summary>
+      <div id="replaceJsonDatasetChecklist" class="mt-2 space-y-1.5 max-h-36 overflow-y-auto pr-0.5"></div>
+    </details>
+  </section>
+
+  <!-- STEP 2: SELECT BARIS RESEP / HPP -->
+  <section class="bg-white rounded-lg border border-slate-200 p-3.5 shadow-sm space-y-2.5">
+    <div class="flex items-start justify-between gap-2">
+      <div>
+        <h2 class="text-xs font-bold uppercase tracking-wider text-emerald-800">2. Select Baris HPP di Sheet</h2>
+        <p class="text-[11px] text-slate-500 mt-0.5">
+          Blok baris data resep / bahan HPP di Google Sheets.
+        </p>
+      </div>
+      <div class="flex items-center gap-1.5">
+        <button
+          type="button"
+          onclick="loadSample14RowsRecipeHpp()"
+          class="shrink-0 text-[11px] font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-2 py-1 rounded"
+          title="Muat contoh resep 14 bahan Ayam Charsiu"
+        >
+          Contoh 14 Bahan
+        </button>
+      </div>
+    </div>
+
+    <div class="bg-slate-50 border border-slate-200 rounded-md p-2 text-[10px] text-slate-600 leading-relaxed">
+      <div class="font-bold text-slate-700 mb-0.5">Format Range yang Didukung (Otomatis):</div>
+      <div class="font-mono text-[10px] text-slate-600">
+        • Format Resep Lengkap: <code>[Menu] • [Bahan] • [Gramasi] • [Satuan] • [Kemasan] • [HARGA/KEMASAN] • ...</code><br/>
+        • Format Standar HPP: <code>[Bahan] • [Gramasi] • [Satuan] • [Kemasan] • [HARGA/KEMASAN] • [Harga/gr] • ...</code>
+      </div>
+    </div>
+
+    <div id="repHppRangeInfo" class="hidden bg-emerald-50/60 border border-emerald-200 rounded-md px-2.5 py-1.5 text-[11px] text-emerald-900 font-mono"></div>
+
+    <button
+      id="btnReadRepHppSelection"
+      type="button"
+      onclick="handleReadRecipeHppSelection()"
+      class="w-full py-2.5 px-3 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-xs font-bold rounded-md shadow-sm transition-colors"
+    >
+      1. Baca Baris HPP yang Di-Select &amp; Tampilkan Preview
+    </button>
+  </section>
+
+  <!-- STEP 3: PREVIEW TABEL PERUBAHAN & TOMBOL REPLACE -->
+  <section id="repHppOutputSection" class="hidden bg-white rounded-lg border border-slate-200 p-3.5 shadow-sm space-y-3">
+    <div class="flex items-center justify-between">
+      <div>
+        <h2 class="text-xs font-bold uppercase tracking-wider text-emerald-800">3. Preview Perubahan Harga</h2>
+        <p class="text-[11px] text-slate-500">Tinjau harga lama vs baru sebelum di-replace ke Sheet.</p>
+      </div>
+      <span id="repHppStatsBadge" class="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+        0 Dipilih
+      </span>
+    </div>
+
+    <!-- INFO TARGET KOLOM & FILTER -->
+    <div class="bg-slate-50 border border-slate-200 rounded-md p-2.5 space-y-2 text-[11px]">
+      <div class="flex items-center justify-between">
+        <span class="font-bold text-slate-700">Kolom Target yang Di-Replace:</span>
+        <span id="repHppTargetColLabel" class="font-mono font-bold text-emerald-800 bg-white px-2 py-0.5 rounded border border-emerald-300">
+          Kolom HARGA / KEMASAN
+        </span>
+      </div>
+
+      <div class="flex items-center justify-between pt-1 border-t border-slate-200">
+        <label class="flex items-center gap-1.5 cursor-pointer select-none">
+          <input
+            id="chkRepHppOnlyDiff"
+            type="checkbox"
+            checked
+            onchange="handleRepHppToggleOnlyDiff(this.checked)"
+            class="h-3.5 w-3.5 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+          />
+          <span class="text-slate-700 font-medium">Hanya centang yang harganya berubah</span>
+        </label>
+        <div class="flex items-center gap-2">
+          <button type="button" onclick="toggleAllRepHppCheckboxes(true)" class="text-emerald-700 font-semibold hover:underline">
+            Semua
+          </button>
+          <span class="text-slate-300">|</span>
+          <button type="button" onclick="toggleAllRepHppCheckboxes(false)" class="text-slate-500 hover:underline">
+            Reset
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- STATISTIK PERUBAHAN -->
+    <div class="grid grid-cols-3 gap-1.5 text-center text-[10px]">
+      <div class="bg-green-50 border border-green-200 rounded p-1.5">
+        <div id="statRepTurun" class="text-xs font-bold text-green-800">0</div>
+        <div class="text-green-700 font-semibold">🟢 Turun / Sesuai</div>
+      </div>
+      <div class="bg-red-50 border border-red-200 rounded p-1.5">
+        <div id="statRepNaik" class="text-xs font-bold text-red-800">0</div>
+        <div class="text-red-700 font-semibold">🔺 Naik</div>
+      </div>
+      <div class="bg-slate-100 border border-slate-200 rounded p-1.5">
+        <div id="statRepSama" class="text-xs font-bold text-slate-700">0</div>
+        <div class="text-slate-500">⚪ Sama / Kosong</div>
+      </div>
+    </div>
+
+    <!-- TABEL PREVIEW PERUBAHAN HARGA -->
+    <div class="space-y-1">
+      <div class="flex items-center justify-between text-[11px]">
+        <span class="font-bold text-slate-700">Tabel Preview Per Baris Bahan:</span>
+        <span class="text-[10px] text-slate-400">Geser ke kanan →</span>
+      </div>
+
+      <div class="border border-slate-200 rounded-md overflow-x-auto max-h-72">
+        <table class="w-full text-[10px] border-collapse">
+          <thead class="bg-slate-800 text-white sticky top-0 z-10">
+            <tr>
+              <th class="px-2 py-1.5 text-center w-8">
+                <input
+                  type="checkbox"
+                  id="chkRepHppMaster"
+                  onchange="toggleAllRepHppCheckboxes(this.checked)"
+                  class="h-3.5 w-3.5 rounded border-slate-300 text-emerald-600 cursor-pointer"
+                  title="Pilih / Batal Semua"
+                />
+              </th>
+              <th class="px-2 py-1.5 text-left whitespace-nowrap">Sel</th>
+              <th class="px-2 py-1.5 text-left whitespace-nowrap">Nama Bahan Resep</th>
+              <th class="px-2 py-1.5 text-right whitespace-nowrap">Harga Lama</th>
+              <th class="px-1.5 py-1.5 text-center">➔</th>
+              <th class="px-2 py-1.5 text-right whitespace-nowrap">Harga Baru</th>
+              <th class="px-2 py-1.5 text-left whitespace-nowrap">Selisih</th>
+            </tr>
+          </thead>
+          <tbody id="repHppPreviewTbody" class="divide-y divide-slate-200 bg-white"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- PENGATURAN ITEM REF PER BARIS (JIKA INGIN GANTI ITEM PEMBANDING) -->
+    <details class="border border-slate-200 rounded-md bg-slate-50 p-2.5">
+      <summary class="cursor-pointer text-[11px] font-bold text-slate-700 select-none">
+        Pencocokan Item Inventory Per Baris (Bisa Ganti Manual)
+      </summary>
+      <div id="repHppDetailCardsList" class="mt-2.5 space-y-2 max-h-72 overflow-y-auto pr-1"></div>
+    </details>
+
+    <!-- TOMBOL EKSEKUSI UTAMA APPLY -->
+    <div class="bg-slate-900 text-white rounded-lg p-3 space-y-2 shadow-sm">
+      <div id="repHppSummaryNote" class="text-[11px] text-emerald-300 leading-relaxed">
+        Pilih bahan di atas yang ingin di-update ke sheet.
+      </div>
+      <button
+        id="btnApplyRepHpp"
+        type="button"
+        onclick="handleApplyRecipeHppReplace()"
+        class="w-full py-2.5 px-3 bg-emerald-500 hover:bg-emerald-400 active:bg-emerald-600 disabled:bg-slate-700 disabled:text-slate-400 text-slate-950 text-xs font-extrabold rounded-md shadow transition-colors uppercase tracking-wide flex items-center justify-center gap-1.5"
+      >
+        <span>⚡ 2. TERAPKAN PERUBAHAN KE KOLOM HARGA/KEMASAN DI SHEET</span>
+      </button>
+      <div class="text-[10px] text-slate-400 text-center">
+        * Hanya sel kolom HARGA/KEMASAN yang ditimpa. Rumus Harga/gr &amp; Total Harga otomatis menghitung ulang.
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<script>
+  // State Khusus Menu 03 (Replace Harga HPP)
+  var repHppRawSelection = null;
+  var repHppCandidateList = [];
+  var repHppCheckedMap = {}; // Map rowIdx -> boolean
+  var repHppManualOverrideMap = {}; // Map rowIdx -> refId
+
+  function initReplaceHppView() {
+    initRepHppPresets();
+    initRepHppPeriodSourceDropdown();
+    if (repHppRawSelection) {
+      recomputeReplaceHppPreview();
+    }
+  }
+
+  function initRepHppPresets() {
+    var checklistEl = document.getElementById("replaceJsonDatasetChecklist");
+    var badgeEl = document.getElementById("replaceInvCountBadge");
+    if (!checklistEl) return;
+
+    var list = (typeof availableJsonPresets !== "undefined" && availableJsonPresets.length > 0)
+      ? availableJsonPresets
+      : (typeof FALLBACK_JSON_PRESETS !== "undefined" ? FALLBACK_JSON_PRESETS : []);
+
+    if (badgeEl) {
+      var totalItems = (typeof normalizedRefItems !== "undefined") ? normalizedRefItems.length : 0;
+      badgeEl.textContent = totalItems + " Item Tersedia";
+    }
+
+    checklistEl.innerHTML = list.map(function (preset) {
+      var isChecked = (typeof selectedDatasetIds !== "undefined") ? Boolean(selectedDatasetIds[preset.id]) : true;
+      var rows = Array.isArray(preset.data) ? preset.data : (preset.data && Array.isArray(preset.data.data) ? preset.data.data : []);
+      return (
+        '<label class="flex items-center justify-between gap-2 p-1.5 rounded border border-slate-200 bg-white cursor-pointer select-none text-[10px]">' +
+        '<div class="flex items-center gap-1.5">' +
+        '<input type="checkbox" ' + (isChecked ? 'checked' : '') + ' onchange="handleRepHppToggleDataset(\'' + escapeHtml(preset.id) + '\', this.checked)" class="h-3.5 w-3.5 rounded border-slate-300 text-emerald-600" />' +
+        '<span class="font-bold text-slate-700">' + escapeHtml(preset.name) + '</span>' +
+        '</div>' +
+        '<span class="text-slate-400 font-mono text-[9px]">' + rows.length + ' item</span>' +
+        '</label>'
+      );
+    }).join("");
+  }
+
+  function handleRepHppToggleDataset(datasetId, isChecked) {
+    if (typeof selectedDatasetIds !== "undefined") {
+      selectedDatasetIds[datasetId] = Boolean(isChecked);
+      if (typeof rebuildMergedInventoryFromSelected === "function") {
+        rebuildMergedInventoryFromSelected();
+      }
+    }
+    initRepHppPresets();
+    initRepHppPeriodSourceDropdown();
+    if (repHppRawSelection) {
+      recomputeReplaceHppPreview();
+    }
+  }
+
+  /**
+   * Mengisi dropdown kolom acuan harga pengganti:
+   * Menampilkan semua kolom periode yang ditemukan di database inventory.
+   * Default memilih kolom PL CENTRAL terbaru (misal PL CENTRAL 15 OKTOBER 2026).
+   */
+  function initRepHppPeriodSourceDropdown() {
+    var sel = document.getElementById("selectRepHppSource");
+    if (!sel) return;
+
+    var prevVal = sel.value;
+    var periodCols = (typeof discoveredPeriodNames !== "undefined" && discoveredPeriodNames.length > 0)
+      ? discoveredPeriodNames
+      : (typeof activeTablePeriodCols !== "undefined" ? activeTablePeriodCols : []);
+
+    if (!periodCols || periodCols.length === 0) {
+      sel.innerHTML = '<option value="">Tidak ada kolom periode ditemukan</option>';
+      return;
+    }
+
+    var defaultCol = "";
+    // Cari kolom PL CENTRAL terbaru dari belakang
+    for (var i = periodCols.length - 1; i >= 0; i--) {
+      if (periodCols[i].toUpperCase().indexOf("PL CENTRAL") !== -1) {
+        defaultCol = periodCols[i];
+        break;
+      }
+    }
+    if (!defaultCol) {
+      defaultCol = periodCols[periodCols.length - 1];
+    }
+
+    // Bangun opsi dropdown berurutan dari yang terbaru ke terlama
+    var reversedCols = periodCols.slice().reverse();
+    var opts = reversedCols.map(function (col) {
+      var isCentral = col.toUpperCase().indexOf("PL CENTRAL") !== -1;
+      var tag = isCentral ? " ★ (Central)" : "";
+      return '<option value="' + escapeHtml(col) + '">' + escapeHtml(col) + tag + '</option>';
+    });
+
+    sel.innerHTML = opts.join("");
+    if (prevVal && periodCols.indexOf(prevVal) !== -1) {
+      sel.value = prevVal;
+    } else {
+      sel.value = defaultCol;
+    }
+  }
+
+  function loadSample14RowsRecipeHpp() {
+    repHppRawSelection = {
+      sheetName: "HPP RESEP",
+      address: "A5:H18",
+      startRow: 5,
+      startCol: 1, // Kolom A
+      rowCount: 14,
+      columnCount: 8,
+      values: [
+        ["AYAM CHARSIU REGULER", "fillet paha", 1000, "gr", 1000, 48000, 48.0, 48000],
+        ["", "jahe", 15, "gr", 1000, 24000, 24.0, 360],
+        ["", "angkak", 30, "gr", 1000, 68000, 68.0, 2040],
+        ["", "madu", 135, "gr", 1000, 49000, 49.0, 6615],
+        ["", "minyak wijen", 45, "gr", 620, 44000, 70.97, 3194],
+        ["", "saos tiram", 15, "gr", 770, 52000, 67.53, 1013],
+        ["", "powder ngohiong", 15, "gr", 1000, 117000, 117.0, 1755],
+        ["", "gula", 15, "gr", 1000, 17500, 17.5, 263],
+        ["", "bawang putih kupas", 5, "gr", 1000, 36000, 36.0, 180],
+        ["", "vitzin", 30, "gr", 1000, 49584, 49.58, 1488],
+        ["", "knorr", 15, "gr", 1000, 90100, 90.1, 1352],
+        ["", "garam ", 15, "gr", 1000, 19000, 19.0, 285],
+        ["", "minyak goreng ", 300, "ml", 18000, 349000, 19.39, 5817],
+        ["", "lada", 1, "gr", 770, 98000, 127.27, 127]
+      ]
+    };
+
+    var infoBox = document.getElementById("repHppRangeInfo");
+    if (infoBox) {
+      infoBox.textContent = "Range Di-Select: " + repHppRawSelection.sheetName + "!" + repHppRawSelection.address + " (14 baris × 8 kolom)";
+      infoBox.classList.remove("hidden");
+    }
+
+    repHppCheckedMap = {};
+    repHppManualOverrideMap = {};
+    recomputeReplaceHppPreview();
+    showAuditStatus("success", "Preview Menu 03 siap! Data 14 bahan Ayam Charsiu berhasil dimuat.");
+  }
+
+  function handleReadRecipeHppSelection() {
+    var btn = document.getElementById("btnReadRepHppSelection");
+    btn.textContent = "Membaca Range HPP di Sheet...";
+    btn.disabled = true;
+
+    if (hasGoogleScriptRun()) {
+      google.script.run
+        .withSuccessHandler(function (res) {
+          btn.textContent = "1. Baca Baris HPP yang Di-Select & Tampilkan Preview";
+          btn.disabled = false;
+          repHppRawSelection = res;
+
+          var infoBox = document.getElementById("repHppRangeInfo");
+          if (infoBox) {
+            infoBox.textContent = "Range Di-Select: " + res.sheetName + "!" + res.address + " (" + res.rowCount + " baris × " + res.columnCount + " kolom)";
+            infoBox.classList.remove("hidden");
+          }
+
+          repHppCheckedMap = {};
+          repHppManualOverrideMap = {};
+          recomputeReplaceHppPreview();
+          showAuditStatus("success", "Berhasil membaca " + res.rowCount + " baris dari Sheet! Tinjau preview perubahan harga di bawah.");
+        })
+        .withFailureHandler(function (err) {
+          btn.textContent = "1. Baca Baris HPP yang Di-Select & Tampilkan Preview";
+          btn.disabled = false;
+          showAuditStatus("error", err && err.message ? err.message : String(err));
+        })
+        .readSelectedRangeFromSheet();
+    } else {
+      btn.textContent = "1. Baca Baris HPP yang Di-Select & Tampilkan Preview";
+      btn.disabled = false;
+      loadSample14RowsRecipeHpp();
+    }
+  }
+
+  /**
+   * Menormalisasi 1 baris input menjadi format 8-kolom standar yang kompatibel
+   * dengan fungsi perbandingan Menu 02 (buildSingleComparisonRow).
+   * Mendeteksi otomatis apakah range yang di-select menyertakan kolom Nama Menu di Col 0 atau langsung Nama Bahan.
+   */
+  function normalizeInputRowForComparison(r) {
+    if (!Array.isArray(r)) return null;
+
+    var c0 = r[0] !== null && r[0] !== undefined ? String(r[0]).trim() : "";
+    var c1 = r[1] !== null && r[1] !== undefined ? String(r[1]).trim() : "";
+    var c2Num = parseNum(r[2]);
+
+    // Jika kolom 1 berisi teks bahan (misal fillet paha, jahe) dan kolom 2 berisi angka gramasi:
+    // Format Resep Lengkap: Col 0 = Menu, Col 1 = Bahan, Col 2 = Gramasi, Col 3 = Satuan, Col 4 = Kemasan, Col 5 = HARGA/KEMASAN
+    var isRecipeLayout = Boolean(c1 && isNaN(Number(c1)) && (!c0 || c2Num !== null));
+
+    if (isRecipeLayout) {
+      return {
+        bahan: c1,
+        hargaKemasanColOffset: 5,
+        stdRow: [c1, r[2], r[3], r[4], r[5], r[6], r[7], 0]
+      };
+    } else {
+      // Format Standar HPP langsung bahan di kolom awal:
+      // Col 0 = Bahan, Col 1 = Gramasi, Col 2 = Satuan, Col 3 = Kemasan, Col 4 = HARGA/KEMASAN
+      return {
+        bahan: c0,
+        hargaKemasanColOffset: 4,
+        stdRow: r
+      };
+    }
+  }
+
+  /**
+   * Menghitung ulang preview perubahan harga menggunakan mesin pembanding
+   * yang 100% identik dengan Menu 02.
+   */
+  function recomputeReplaceHppPreview() {
+    if (!repHppRawSelection || !Array.isArray(repHppRawSelection.values)) return;
+
+    var rows = repHppRawSelection.values;
+    var sourceSelect = document.getElementById("selectRepHppSource");
+    var targetColName = sourceSelect ? sourceSelect.value : "";
+
+    // Pastikan activeTablePeriodCols terisi agar buildSingleComparisonRow membaca kolom acuan
+    if (typeof activeTablePeriodCols === "undefined" || !activeTablePeriodCols || activeTablePeriodCols.length === 0) {
+      if (typeof discoveredPeriodNames !== "undefined" && discoveredPeriodNames.length > 0) {
+        window.activeTablePeriodCols = discoveredPeriodNames.slice();
+      }
+    }
+    if (targetColName && window.activeTablePeriodCols.indexOf(targetColName) === -1) {
+      window.activeTablePeriodCols.push(targetColName);
+    }
+
+    var startRow = Number(repHppRawSelection.startRow || 1);
+    var startCol = Number(repHppRawSelection.startCol || 1);
+
+    var onlyDiffChecked = document.getElementById("chkRepHppOnlyDiff")
+      ? document.getElementById("chkRepHppOnlyDiff").checked
+      : true;
+
+    var candidates = [];
+    var refItems = typeof normalizedRefItems !== "undefined" ? normalizedRefItems : [];
+    var detectedTargetColLetter = "";
+
+    rows.forEach(function (rawRow, idx) {
+      var normLayout = normalizeInputRowForComparison(rawRow);
+      if (!normLayout || !normLayout.bahan) {
+        return; // Lewati baris kosong
+      }
+
+      // Deteksi jika baris ke-0 adalah header tabel
+      if (idx === 0) {
+        var keyBahan = normalizeKey(normLayout.bahan);
+        if (keyBahan === "bahan" || keyBahan === "namabahan" || keyBahan === "item") {
+          return;
+        }
+      }
+
+      var sheetRow = startRow + idx;
+      var targetSheetCol = startCol + normLayout.hargaKemasanColOffset;
+      var targetColLetter = colNumberToLetter(targetSheetCol);
+      var cellAddress = targetColLetter + sheetRow;
+      detectedTargetColLetter = targetColLetter;
+
+      // Jalankan fungsi matching AKURASI PERSIS DENGAN MENU 02
+      var overrideRefId = repHppManualOverrideMap[idx];
+      var compRes = null;
+      if (typeof buildSingleComparisonRow === "function") {
+        compRes = buildSingleComparisonRow(idx + 1, normLayout.stdRow, overrideRefId);
+      }
+
+      var matchedRef = compRes ? compRes.matchedRef : null;
+      var oldPrice = compRes ? compRes.hargaKemasanHpp : parseNum(normLayout.stdRow[4]);
+
+      // Ambil harga dari kolom acuan yang dipilih oleh user
+      var rawColPrice = null;
+      if (matchedRef && targetColName) {
+        if (matchedRef.priceByCol && matchedRef.priceByCol[targetColName] > 0) {
+          rawColPrice = matchedRef.priceByCol[targetColName];
+        } else {
+          // Cari di companion items (item sejenis beda satuan) persis seperti Menu 02
+          var normTargetName = typeof cleanIngredientName === "function" ? cleanIngredientName(matchedRef.itemName) : normalizeKey(matchedRef.itemName);
+          var companions = refItems.filter(function (it) {
+            return it.id !== matchedRef.id && (typeof cleanIngredientName === "function" ? cleanIngredientName(it.itemName) : normalizeKey(it.itemName)) === normTargetName;
+          });
+          for (var k = 0; k < companions.length; k++) {
+            if (companions[k].priceByCol && companions[k].priceByCol[targetColName] > 0) {
+              rawColPrice = companions[k].priceByCol[targetColName];
+              break;
+            }
+          }
+        }
+      }
+
+      // Fallback: Jika di kolom acuan tidak ada harga sama sekali, ambil harga terakhir yang valid di ref tersebut
+      if (rawColPrice === null && matchedRef && matchedRef.priceByCol) {
+        var availablePrices = Object.keys(matchedRef.priceByCol)
+          .map(function (k) { return matchedRef.priceByCol[k]; })
+          .filter(function (v) { return v > 0; });
+        if (availablePrices.length > 0) {
+          rawColPrice = availablePrices[availablePrices.length - 1];
+        }
+      }
+
+      // Konversi Cerdas Satuan:
+      // Jika satuan di inventory adalah per-gram/ml (misal Jahe = 27.6 / gr),
+      // sedangkan di sheet kolom HARGA/KEMASAN kemasannya > 1 (misal 1000 gr):
+      var newHargaKemasan = rawColPrice;
+      var kemasanVal = compRes ? parseNum(compRes.rawRow[3]) : parseNum(normLayout.stdRow[3]);
+      var gUnit = String(matchedRef ? matchedRef.gramasiUnit : "").toUpperCase();
+
+      if (rawColPrice !== null && kemasanVal && kemasanVal > 1 && (gUnit === "GR" || gUnit === "GRAM" || gUnit === "ML")) {
+        if (oldPrice && oldPrice > 100 && rawColPrice < (oldPrice / 10)) {
+          newHargaKemasan = Number((rawColPrice * kemasanVal).toFixed(2));
+        }
+      }
+
+      var canReplace = (newHargaKemasan !== null && newHargaKemasan > 0);
+      var delta = (canReplace && oldPrice !== null) ? (newHargaKemasan - oldPrice) : null;
+      var hasDiff = canReplace && (delta === null || Math.abs(delta) > 0.01);
+
+      if (repHppCheckedMap[idx] === undefined) {
+        repHppCheckedMap[idx] = Boolean(canReplace && (!onlyDiffChecked || hasDiff));
+      }
+
+      candidates.push({
+        rowIdx: idx,
+        rowNumber: idx + 1,
+        sheetRow: sheetRow,
+        sheetCol: targetSheetCol,
+        cellAddress: cellAddress,
+        bahan: normLayout.bahan,
+        matchedRef: matchedRef,
+        matchedItemName: matchedRef ? matchedRef.itemName : "",
+        oldPrice: oldPrice,
+        newPrice: newHargaKemasan,
+        delta: delta,
+        canReplace: canReplace,
+        hasDiff: hasDiff
+      });
+    });
+
+    repHppCandidateList = candidates;
+
+    var targetColLabelEl = document.getElementById("repHppTargetColLabel");
+    if (targetColLabelEl) {
+      targetColLabelEl.textContent = "Kolom " + (detectedTargetColLetter || "HARGA/KEMASAN") + " (" + (targetColName || "Kolom Acuan") + ")";
+    }
+
+    document.getElementById("repHppOutputSection").classList.remove("hidden");
+    renderReplaceHppTableUI();
+    renderRepHppManualCardsUI();
+  }
+
+  function renderReplaceHppTableUI() {
+    var tbody = document.getElementById("repHppPreviewTbody");
+    if (!tbody) return;
+
+    var totalSelected = 0;
+    var allCanReplaceCount = 0;
+    var naikCount = 0;
+    var turunCount = 0;
+    var samaCount = 0;
+
+    var rowsHtml = repHppCandidateList.map(function (cand) {
+      if (cand.canReplace) allCanReplaceCount++;
+      var isChecked = Boolean(repHppCheckedMap[cand.rowIdx]);
+      if (isChecked && cand.canReplace) totalSelected++;
+
+      var deltaBadge = "-";
+      if (cand.canReplace && cand.delta !== null) {
+        if (cand.delta > 0.01) {
+          naikCount++;
+          deltaBadge = '<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-rose-100 text-rose-800 border border-rose-200 whitespace-nowrap">🔺 +' + formatIDR(cand.delta, true) + '</span>';
+        } else if (cand.delta < -0.01) {
+          turunCount++;
+          deltaBadge = '<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 whitespace-nowrap">🟢 ' + formatIDR(cand.delta, true) + '</span>';
+        } else {
+          samaCount++;
+          deltaBadge = '<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] text-slate-500 bg-slate-100 border border-slate-200 whitespace-nowrap">Sama (Rp 0)</span>';
+        }
+      } else if (!cand.canReplace) {
+        samaCount++;
+        deltaBadge = '<span class="text-[9px] text-slate-400 italic">Tidak ada ref</span>';
+      }
+
+      var rowBg = isChecked ? "bg-emerald-50/40" : (!cand.canReplace ? "bg-slate-50 opacity-60" : "bg-white");
+
+      return (
+        '<tr class="hover:bg-slate-50 transition-colors ' + rowBg + '">' +
+          '<td class="px-2 py-1.5 text-center">' +
+            '<input type="checkbox" ' +
+              (isChecked ? 'checked ' : '') +
+              (!cand.canReplace ? 'disabled ' : '') +
+              'onchange="handleRepHppToggleRow(' + cand.rowIdx + ', this.checked)" ' +
+              'class="h-3.5 w-3.5 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer" />' +
+          '</td>' +
+          '<td class="px-2 py-1.5 font-mono font-bold text-emerald-800 whitespace-nowrap">' +
+            cand.cellAddress +
+          '</td>' +
+          '<td class="px-2 py-1.5 font-semibold text-slate-800 whitespace-nowrap">' +
+            '<span class="text-slate-400 font-normal mr-1">#' + cand.rowNumber + '</span>' +
+            escapeHtml(cand.bahan) +
+            (cand.matchedItemName ? '<div class="text-[9px] text-slate-500 font-normal truncate max-w-[130px]">Ref: ' + escapeHtml(cand.matchedItemName) + '</div>' : '') +
+          '</td>' +
+          '<td class="px-2 py-1.5 text-right font-mono text-slate-600 whitespace-nowrap">' +
+            (cand.oldPrice !== null ? formatIDR(cand.oldPrice, true) : '-') +
+          '</td>' +
+          '<td class="px-1.5 py-1.5 text-center text-slate-400 text-xs">➔</td>' +
+          '<td class="px-2 py-1.5 text-right font-mono font-bold ' + (cand.canReplace ? 'text-emerald-950 bg-emerald-50/70' : 'text-slate-400') + ' whitespace-nowrap">' +
+            (cand.canReplace ? formatIDR(cand.newPrice, true) : '-') +
+          '</td>' +
+          '<td class="px-2 py-1.5 whitespace-nowrap">' +
+            deltaBadge +
+          '</td>' +
+        '</tr>'
+      );
+    }).join("");
+
+    tbody.innerHTML = rowsHtml || '<tr><td colspan="7" class="text-center py-3 text-slate-400">Tidak ada baris HPP yang dibaca</td></tr>';
+
+    var masterChk = document.getElementById("chkRepHppMaster");
+    if (masterChk) {
+      masterChk.checked = (allCanReplaceCount > 0 && totalSelected === allCanReplaceCount);
+      masterChk.indeterminate = (totalSelected > 0 && totalSelected < allCanReplaceCount);
+    }
+
+    var badge = document.getElementById("repHppStatsBadge");
+    if (badge) badge.textContent = totalSelected + " Dipilih";
+
+    document.getElementById("statRepTurun").textContent = turunCount;
+    document.getElementById("statRepNaik").textContent = naikCount;
+    document.getElementById("statRepSama").textContent = samaCount;
+
+    var sumNote = document.getElementById("repHppSummaryNote");
+    if (sumNote) {
+      if (totalSelected > 0) {
+        sumNote.innerHTML = 'Siap me-replace <strong class="text-white font-bold">' + totalSelected + ' nilai harga</strong> di kolom HARGA / KEMASAN sheet <code>' + (repHppRawSelection ? repHppRawSelection.sheetName : 'Sheet Aktif') + '</code>. Rumus resep lainnya akan otomatis menyesuaikan.';
+      } else {
+        sumNote.textContent = 'Centang bahan di tabel atas yang ingin di-replace harganya ke sheet.';
+      }
+    }
+
+    var btn = document.getElementById("btnApplyRepHpp");
+    if (btn) {
+      btn.disabled = (totalSelected === 0);
+      btn.innerHTML = '<span>⚡ 2. TERAPKAN ' + (totalSelected > 0 ? totalSelected + ' ' : '') + 'PERUBAHAN KE KOLOM HARGA/KEMASAN DI SHEET</span>';
+    }
+  }
+
+  function renderRepHppManualCardsUI() {
+    var container = document.getElementById("repHppDetailCardsList");
+    if (!container) return;
+
+    var refItems = typeof normalizedRefItems !== "undefined" ? normalizedRefItems : [];
+
+    container.innerHTML = repHppCandidateList.map(function (cand) {
+      var topOptions = [];
+      if (cand.matchedRef) {
+        topOptions.push('<option value="' + escapeHtml(cand.matchedRef.id) + '" selected>★ ' + escapeHtml(cand.matchedRef.itemName) + ' (' + escapeHtml(cand.matchedRef.kategori) + ')</option>');
+      } else {
+        topOptions.push('<option value="" selected>⚪ Belum Cocok (Pilih Manual...)</option>');
+      }
+
+      // 10 Item teratas berdasarkan kemiripan teks
+      var scored = [];
+      for (var i = 0; i < refItems.length; i++) {
+        var it = refItems[i];
+        if (cand.matchedRef && it.id === cand.matchedRef.id) continue;
+        var s = typeof calcIngredientSimilarity === "function" ? calcIngredientSimilarity(cand.bahan, it) : 0;
+        if (s > 0.25) {
+          scored.push({ item: it, score: s });
+        }
+      }
+      scored.sort(function (a, b) { return b.score - a.score; });
+      scored.slice(0, 10).forEach(function (sc) {
+        topOptions.push('<option value="' + escapeHtml(sc.item.id) + '">' + escapeHtml(sc.item.itemName) + ' (' + escapeHtml(sc.item.kategori) + ')</option>');
+      });
+
+      return (
+        '<div class="p-2 rounded border border-slate-200 bg-white space-y-1 text-[11px]">' +
+          '<div class="flex items-center justify-between">' +
+            '<span class="font-bold text-slate-800">#' + cand.rowNumber + ' ' + escapeHtml(cand.bahan) + '</span>' +
+            '<span class="font-mono text-[10px] text-emerald-800 font-bold">' + cand.cellAddress + '</span>' +
+          '</div>' +
+          '<div class="flex items-center gap-1.5">' +
+            '<label class="text-[10px] text-slate-500 shrink-0">Item Ref:</label>' +
+            '<select onchange="handleRepHppChangeOverride(' + cand.rowIdx + ', this.value)" class="flex-1 text-[10px] border border-slate-300 rounded px-1.5 py-1 bg-white">' +
+              topOptions.join("") +
+            '</select>' +
+          '</div>' +
+        '</div>'
+      );
+    }).join("");
+  }
+
+  function handleRepHppToggleRow(rowIdx, isChecked) {
+    repHppCheckedMap[rowIdx] = Boolean(isChecked);
+    renderReplaceHppTableUI();
+  }
+
+  function toggleAllRepHppCheckboxes(selectAll) {
+    repHppCandidateList.forEach(function (cand) {
+      if (cand.canReplace) {
+        repHppCheckedMap[cand.rowIdx] = Boolean(selectAll);
+      }
+    });
+    renderReplaceHppTableUI();
+  }
+
+  function handleRepHppToggleOnlyDiff(onlyDiff) {
+    repHppCandidateList.forEach(function (cand) {
+      if (cand.canReplace) {
+        repHppCheckedMap[cand.rowIdx] = Boolean(!onlyDiff || cand.hasDiff);
+      }
+    });
+    renderReplaceHppTableUI();
+  }
+
+  function handleRepHppChangeOverride(rowIdx, newRefId) {
+    if (newRefId) {
+      repHppManualOverrideMap[rowIdx] = newRefId;
+    } else {
+      delete repHppManualOverrideMap[rowIdx];
+    }
+    recomputeReplaceHppPreview();
+  }
+
+  function handleApplyRecipeHppReplace() {
+    var itemsToReplace = repHppCandidateList
+      .filter(function (cand) { return repHppCheckedMap[cand.rowIdx] && cand.canReplace; })
+      .map(function (cand) {
+        return {
+          sheetRow: cand.sheetRow,
+          sheetCol: cand.sheetCol,
+          cellAddress: cand.cellAddress,
+          oldValue: cand.oldPrice,
+          newValue: cand.newPrice,
+          bahan: cand.bahan
+        };
+      });
+
+    if (itemsToReplace.length === 0) {
+      showAuditStatus("error", "Tidak ada baris bahan yang dicentang untuk di-replace.");
+      return;
+    }
+
+    var btn = document.getElementById("btnApplyRepHpp");
+    var originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span>⏳ MENERAPKAN ' + itemsToReplace.length + ' HARGA KE SHEET...</span>';
+
+    if (hasGoogleScriptRun()) {
+      google.script.run
+        .withSuccessHandler(function (result) {
+          btn.disabled = false;
+          btn.innerHTML = originalText;
+          showAuditStatus("success", "BERHASIL! " + result.message);
+          // Update harga lama di memory agar preview langsung sinkron
+          itemsToReplace.forEach(function (it) {
+            var cand = repHppCandidateList.find(function (c) { return c.sheetRow === it.sheetRow; });
+            if (cand) {
+              cand.oldPrice = it.newValue;
+              cand.delta = 0;
+              cand.hasDiff = false;
+              repHppCheckedMap[cand.rowIdx] = false;
+            }
+          });
+          renderReplaceHppTableUI();
+        })
+        .withFailureHandler(function (err) {
+          btn.disabled = false;
+          btn.innerHTML = originalText;
+          showAuditStatus("error", "Gagal me-replace ke Sheet: " + (err && err.message ? err.message : String(err)));
+        })
+        .applyReplaceHargaKemasanToSheet({
+          sheetName: repHppRawSelection ? repHppRawSelection.sheetName : "",
+          items: itemsToReplace
+        });
+    } else {
+      // Mock mode untuk testing lokal
+      setTimeout(function () {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+        showAuditStatus("success", "[MOCK BROWSER] Berhasil memperbarui " + itemsToReplace.length + " harga di sheet!");
+        itemsToReplace.forEach(function (it) {
+          var cand = repHppCandidateList.find(function (c) { return c.sheetRow === it.sheetRow; });
+          if (cand) {
+            cand.oldPrice = it.newValue;
+            cand.delta = 0;
+            cand.hasDiff = false;
+            repHppCheckedMap[cand.rowIdx] = false;
+          }
+        });
+        renderReplaceHppTableUI();
+      }, 500);
+    }
+  }
+</script>

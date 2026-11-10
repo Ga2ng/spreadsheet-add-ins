@@ -1,0 +1,1551 @@
+<!--
+===============================================================================
+MENU 02: PEMBANDING HPP VIEW (PembandingView.html)
+===============================================================================
+Fitur:
+1. Multi-Select Sumber Data Pembanding (Central Kitchen & Central Storage).
+2. Baca 8 Kolom HPP tanpa header.
+3. 2 Warna Saja (Merah & Hijau):
+   - Merah (#fee2e2 / #991b1b) : NAIK (Harga > HPP)
+   - Hijau (#dcfce7 / #166534) : SESUAI / TURUN (Harga <= HPP)
+   - Warna Biru Dihapus!
+4. Pewarnaan & Ringkasan NOTE hanya membandingkan 2 Kolom Terakhir vs HPP.
+5. 1 Tombol Auto Create Tabel ke Spreadsheet.
+===============================================================================
+-->
+<div id="viewHppAudit" class="space-y-3">
+
+  <!-- STEP 1: PILIH DATA PEMBANDING -->
+  <section class="bg-white rounded-lg border border-slate-200 p-3.5 shadow-sm space-y-2.5">
+    <div class="flex items-start justify-between gap-2">
+      <div>
+        <h2 class="text-xs font-bold uppercase tracking-wider text-emerald-800">1. Pilih Data Pembanding (Bisa &gt; 1)</h2>
+        <p class="text-[11px] text-slate-500">
+          Dibaca dari hasil convert JSON (<code class="font-mono text-emerald-700">DataPembanding.gs</code>).
+        </p>
+      </div>
+      <button
+        type="button"
+        onclick="toggleAddJsonPanel()"
+        class="shrink-0 text-[11px] font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-2 py-1 rounded"
+      >
+        + Tambah JSON
+      </button>
+    </div>
+
+    <div class="flex items-center justify-between text-[11px] pt-0.5">
+      <span class="font-semibold text-slate-600">Sumber Data Pembanding:</span>
+      <div class="flex items-center gap-2">
+        <button type="button" onclick="selectAllJsonDatasets(true)" class="text-emerald-700 font-semibold hover:underline">
+          Pilih Semua
+        </button>
+        <span class="text-slate-300">|</span>
+        <button type="button" onclick="selectAllJsonDatasets(false)" class="text-slate-500 hover:text-slate-800 hover:underline">
+          Kosongkan
+        </button>
+      </div>
+    </div>
+
+    <!-- Daftar Checkbox Multi-Select Dataset JSON -->
+    <div id="jsonDatasetChecklist" class="space-y-1.5 max-h-40 overflow-y-auto pr-0.5"></div>
+
+    <!-- Ringkasan Hasil Gabungan Dataset yang Dicentang -->
+    <div id="jsonPresetSummary" class="bg-emerald-50/70 border border-emerald-200 rounded-md px-2.5 py-2 text-[11px] text-emerald-900 space-y-0.5">
+      <div class="flex items-center justify-between">
+        <span id="jsonPresetCountText" class="font-semibold">Memuat database pembanding...</span>
+        <span id="jsonPresetPeriodBadge" class="font-semibold bg-white px-1.5 py-0.5 rounded border border-emerald-200 text-[10px]"></span>
+      </div>
+      <div id="jsonCategoryBreakdown" class="text-[10px] text-emerald-700"></div>
+    </div>
+
+    <!-- Panel Tambah JSON Pembanding Baru -->
+    <div id="addJsonPanel" class="hidden border border-slate-200 rounded-md p-2.5 bg-slate-50 space-y-2">
+      <div class="flex items-center justify-between">
+        <span class="text-[11px] font-bold text-slate-700">Tambah Sumber JSON Pembanding Baru</span>
+        <label class="cursor-pointer text-[11px] text-emerald-700 font-semibold hover:underline">
+          Upload File .json
+          <input type="file" accept=".json" onchange="handleUploadNewJsonFile(event)" class="hidden" />
+        </label>
+      </div>
+      <input
+        id="newJsonNameInput"
+        type="text"
+        placeholder="Nama Data (misal: Supplier Baru)"
+        class="w-full text-xs border border-slate-300 rounded px-2 py-1.5 bg-white"
+      />
+      <textarea
+        id="newJsonRawInput"
+        rows="3"
+        placeholder="Paste JSON dari Parser di sini..."
+        class="w-full text-[11px] font-mono border border-slate-300 rounded p-2 bg-white"
+      ></textarea>
+      <div class="flex gap-1.5">
+        <button
+          type="button"
+          onclick="handleSaveNewJsonPreset()"
+          class="flex-1 py-1.5 px-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded text-[11px]"
+        >
+          Simpan ke Daftar Pilihan
+        </button>
+        <button
+          type="button"
+          onclick="toggleAddJsonPanel()"
+          class="py-1.5 px-2.5 bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold rounded text-[11px]"
+        >
+          Batal
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- STEP 2: SELECT BARIS BAHAN HPP -->
+  <section class="bg-white rounded-lg border border-slate-200 p-3.5 shadow-sm space-y-2.5">
+    <div class="flex items-start justify-between gap-2">
+      <div>
+        <h2 class="text-xs font-bold uppercase tracking-wider text-emerald-800">2. Select Baris HPP &amp; Preview</h2>
+        <p class="text-[11px] text-slate-500 mt-0.5">
+          Blok baris data bahan HPP di Sheet (tanpa header, 8 kolom tetap).
+        </p>
+      </div>
+      <button
+        type="button"
+        onclick="loadSample10RowsHpp()"
+        class="shrink-0 text-[11px] font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-2 py-1 rounded"
+      >
+        Contoh Data
+      </button>
+    </div>
+
+    <div class="bg-slate-50 border border-slate-200 rounded-md p-2 text-[10px] text-slate-600 leading-relaxed">
+      <div class="font-bold text-slate-700 mb-0.5">Urutan 8 Kolom HPP yang Di-Select:</div>
+      <div class="font-mono text-[10px] text-slate-600">
+        [1] Bahan • [2] Gramasi • [3] Satuan • [4] KEMASAN • [5] HARGA/KEMASAN • [6] HARGA/Gr/Ml • [7] HARGA • [8] PROCESS 10%
+      </div>
+    </div>
+
+    <label class="flex items-center gap-2 cursor-pointer select-none">
+      <input
+        id="chkNoHeaderHpp"
+        type="checkbox"
+        checked
+        onchange="recomputeHppComparison()"
+        class="h-4 w-4 rounded border-slate-300 text-emerald-600"
+      />
+      <span class="text-xs font-medium text-slate-700">
+        Baris ke-1 yang di-select langsung data bahan (Tanpa Header)
+      </span>
+    </label>
+
+    <div id="hppSelectedRangeInfo" class="hidden bg-emerald-50/60 border border-emerald-200 rounded-md px-2.5 py-1.5 text-[11px] text-emerald-900 font-mono"></div>
+
+    <button
+      id="btnReadHppSelection"
+      type="button"
+      onclick="handleReadHppSelectedRange()"
+      class="w-full py-2.5 px-3 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-xs font-bold rounded-md shadow-sm transition-colors"
+    >
+      1. Baca Baris HPP yang Di-Select &amp; Tampilkan Preview
+    </button>
+  </section>
+
+  <!-- STEP 3: PREVIEW TABEL & 1 TOMBOL AUTO CREATE -->
+  <section id="tableOutputSection" class="hidden bg-white rounded-lg border border-slate-200 p-3.5 shadow-sm space-y-3">
+    <div class="flex items-center justify-between">
+      <div>
+        <h2 class="text-xs font-bold uppercase tracking-wider text-emerald-800">3. Auto Create Tabel Per Kolom</h2>
+        <p class="text-[11px] text-slate-500">2 Warna saja (Hijau &amp; Merah) di 2 kolom terakhir + Kolom Note.</p>
+      </div>
+      <span id="tableRowCountBadge" class="text-[11px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200"></span>
+    </div>
+
+    <!-- PENGATURAN BULAN & HEADER OTOMATIS -->
+    <div class="space-y-2 bg-slate-50 border border-slate-200 rounded-lg p-2.5">
+      <div>
+        <label class="block text-[11px] font-bold text-slate-700 mb-1">
+          Kolom Bulan yang Dibuat:
+        </label>
+        <select
+          id="selectPeriodFilter"
+          onchange="handlePeriodFilterModeChange(this.value)"
+          class="w-full text-xs font-semibold border border-slate-300 rounded-md px-2 py-1.5 bg-white text-slate-800"
+        >
+          <option value="AUGUST_ONWARDS" selected>Mulai Agustus s/d Terbaru (Default)</option>
+          <option value="ALL_NON_ZERO">Semua Bulan dari Awal (April – Terbaru)</option>
+          <option value="CUSTOM_MULTI">Pilih Manual Kolom Bulan (Bisa Pilih &gt; 1)</option>
+        </select>
+      </div>
+
+      <!-- Box Multi-Select Kolom Bulan (Muncul saat pilih CUSTOM_MULTI) -->
+      <div id="customPeriodMultiBox" class="hidden border border-slate-200 rounded-md p-2 bg-white space-y-1.5">
+        <div class="flex items-center justify-between text-[10px]">
+          <span class="font-bold text-slate-700">Centang Kolom Bulan:</span>
+          <div class="flex gap-1.5">
+            <button type="button" onclick="toggleAllCustomPeriods(true)" class="text-emerald-700 font-semibold hover:underline">Semua</button>
+            <span>|</span>
+            <button type="button" onclick="toggleAllCustomPeriods(false)" class="text-slate-500 hover:underline">Reset</button>
+          </div>
+        </div>
+        <div id="customPeriodChecklist" class="max-h-36 overflow-y-auto space-y-1 pr-1"></div>
+      </div>
+
+      <div>
+        <label class="block text-[11px] font-bold text-slate-700 mb-1">
+          Aturan Baris Header Bulan (Tabel ke-1 vs Tabel ke-2 dst.):
+        </label>
+        <select
+          id="selectHeaderMode"
+          onchange="renderTablePreviewUI()"
+          class="w-full text-xs border border-slate-300 rounded-md px-2 py-1.5 bg-white text-slate-800"
+        >
+          <option value="auto" selected>Otomatis Cerdas (Tabel ke-1 Pakai Header, Tabel ke-2+ Tanpa Header)</option>
+          <option value="always">Selalu Buat Baris Header Bulan</option>
+          <option value="never">Tanpa Header (Hanya Isi Baris Nilai Sejajar Bahan)</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- 1 TOMBOL EKSEKUSI UTAMA -->
+    <div class="bg-slate-900 text-white rounded-lg p-3 space-y-2 shadow-sm">
+      <div class="flex items-center justify-between text-[11px]">
+        <span class="text-emerald-300 font-semibold">Klik 1 sel target di Sheet, lalu tekan:</span>
+        <span id="colDimensionBadge" class="font-mono text-[10px] bg-slate-800 px-1.5 py-0.5 rounded text-slate-300"></span>
+      </div>
+      <button
+        id="btnAutoCreateSingle"
+        type="button"
+        onclick="handleAutoCreateTable()"
+        class="w-full py-2.5 px-3 bg-emerald-500 hover:bg-emerald-400 active:bg-emerald-600 text-slate-950 text-xs font-extrabold rounded-md shadow transition-colors uppercase tracking-wide"
+      >
+        ⚡ 2. AUTO CREATE TABEL DI SEL YANG DI-SELECT
+      </button>
+    </div>
+
+    <!-- Statistik Cepat & Legenda 2 Warna -->
+    <div class="grid grid-cols-3 gap-1.5 text-center">
+      <div class="bg-emerald-50 border border-emerald-200 rounded p-1.5">
+        <div id="statSesuai" class="text-xs font-bold text-emerald-800">0</div>
+        <div class="text-[10px] text-emerald-700">🟢 Sesuai/Aman (&lt;= HPP)</div>
+      </div>
+      <div class="bg-red-50 border border-red-200 rounded p-1.5">
+        <div id="statBerbeda" class="text-xs font-bold text-red-800">0</div>
+        <div class="text-[10px] text-red-700">🔺 Naik (&gt; HPP)</div>
+      </div>
+      <div class="bg-slate-100 border border-slate-200 rounded p-1.5">
+        <div id="statNotFound" class="text-xs font-bold text-slate-700">0</div>
+        <div class="text-[10px] text-slate-500">⚪ Kosong / Tidak Ada</div>
+      </div>
+    </div>
+
+    <!-- LEGENDA ATURAN 2 WARNA (RULES.md) -->
+    <div class="bg-slate-50 border border-slate-200 rounded-md p-2.5 space-y-1 text-[10px]">
+      <div class="font-bold text-slate-700 uppercase tracking-wider flex items-center justify-between">
+        <span>🎨 Aturan 2 Warna (2 Kolom Terakhir)</span>
+        <span class="text-[9px] font-normal text-slate-400">Acuan: Harga HPP</span>
+      </div>
+      <div class="grid grid-cols-2 gap-1.5 pt-0.5">
+        <div class="flex items-center gap-1.5 px-1.5 py-1 rounded bg-green-100 text-green-900 font-semibold border border-green-200">
+          <span>🟢</span>
+          <span>Hijau = &lt;= HPP (Aman/Turun)</span>
+        </div>
+        <div class="flex items-center gap-1.5 px-1.5 py-1 rounded bg-red-100 text-red-900 font-semibold border border-red-200">
+          <span>🔺</span>
+          <span>Merah = &gt; HPP (Naik)</span>
+        </div>
+      </div>
+      <div class="text-[9px] text-slate-500 pt-0.5">
+        * Kolom periode terdahulu tampil bersih latar putih. Warna Biru sudah dihapus. Ringkasan NOTE hanya membandingkan 2 kolom terakhir.
+      </div>
+    </div>
+
+    <!-- PREVIEW TABEL -->
+    <div class="space-y-1.5 pt-1 border-t border-slate-100">
+      <div class="flex items-center justify-between">
+        <span class="text-[11px] font-bold uppercase tracking-wider text-slate-600">
+          Preview Tabel (2 Kolom Terakhir Diwarnai + Kolom Note)
+        </span>
+        <span class="text-[10px] text-slate-400">Geser ke kanan →</span>
+      </div>
+
+      <div class="border border-slate-200 rounded-md overflow-x-auto max-h-72">
+        <table class="w-full text-[10px] border-collapse">
+          <thead id="previewTableHead" class="bg-slate-800 text-white sticky top-0 z-10"></thead>
+          <tbody id="previewTableBody" class="divide-y divide-slate-200 bg-white"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- PENGATURAN ITEM PEMBANDING PER BARIS -->
+    <details class="border border-slate-200 rounded-md bg-slate-50 p-2.5">
+      <summary class="cursor-pointer text-[11px] font-bold text-slate-700 select-none">
+        Pengaturan Pencocokan Item Per Baris &amp; Ganti Manual
+      </summary>
+      <div id="rowsDetailCardsList" class="mt-2.5 space-y-2 max-h-80 overflow-y-auto pr-1"></div>
+    </details>
+  </section>
+
+</div>
+
+<script>
+  // Safeguard utility helper functions (jika belum didefinisikan oleh shell Sidebar)
+  if (typeof normalizeKey === "undefined") {
+    window.normalizeKey = function (txt) {
+      return String(txt || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+    };
+  }
+  if (typeof parseNum === "undefined") {
+    window.parseNum = function (val) {
+      if (val === null || val === undefined || val === "") return null;
+      if (typeof val === "number" && !isNaN(val)) return val;
+      var s = String(val).trim();
+      if (!s) return null;
+      var cleaned = s
+        .replace(/[Rp\s]/gi, "")
+        .replace(/\.(?=\d{3}(\D|$))/g, "")
+        .replace(",", ".");
+      var n = Number(cleaned);
+      return isFinite(n) ? n : null;
+    };
+  }
+  if (typeof formatIDR === "undefined") {
+    window.formatIDR = function (val, allowDecimals) {
+      if (val === null || val === undefined || isNaN(val)) return "-";
+      if (allowDecimals && Math.abs(val - Math.round(val)) > 0.005) {
+        return new Intl.NumberFormat("id-ID", { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(val);
+      }
+      return new Intl.NumberFormat("id-ID").format(Math.round(val));
+    };
+  }
+  if (typeof formatSignedIDR === "undefined") {
+    window.formatSignedIDR = function (val, allowDecimals) {
+      if (val === null || val === undefined || isNaN(val)) return "-";
+      if (allowDecimals && Math.abs(val - Math.round(val)) > 0.005) {
+        if (Math.abs(val) < 0.005) return "0";
+        return (val > 0 ? "+" : "") + new Intl.NumberFormat("id-ID", { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(val);
+      }
+      var r = Math.round(val);
+      if (r === 0) return "0";
+      return (r > 0 ? "+" : "") + new Intl.NumberFormat("id-ID").format(r);
+    };
+  }
+  if (typeof escapeHtml === "undefined") {
+    window.escapeHtml = function (str) {
+      return String(str || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    };
+  }
+  if (typeof colNumberToLetter === "undefined") {
+    window.colNumberToLetter = function (colNum) {
+      var temp = Number(colNum);
+      var letter = "";
+      while (temp > 0) {
+        var mod = (temp - 1) % 26;
+        letter = String.fromCharCode(65 + mod) + letter;
+        temp = Math.floor((temp - 1) / 26);
+      }
+      return letter || "A";
+    };
+  }
+  if (typeof showAuditStatus === "undefined") {
+    window.showAuditStatus = function (type, text) {
+      var box = document.getElementById("auditStatusBox");
+      if (!box) return;
+      if (!text) {
+        box.className = "hidden";
+        box.textContent = "";
+        return;
+      }
+      var cls =
+        "rounded-md p-2.5 text-xs border " +
+        (type === "success"
+          ? "bg-emerald-50 border-emerald-300 text-emerald-800"
+          : type === "error"
+          ? "bg-rose-50 border-rose-300 text-rose-800"
+          : "bg-sky-50 border-sky-300 text-sky-800");
+      box.className = cls;
+      box.textContent = text;
+    };
+  }
+  if (typeof hasGoogleScriptRun === "undefined") {
+    window.hasGoogleScriptRun = function () {
+      return typeof google !== "undefined" && google.script && google.script.run;
+    };
+  }
+
+  // Fallback bawaan jika dijalankan di luar Google Apps Script (di Apps Script, data lengkap dimuat dari DataPembanding.gs)
+  var FALLBACK_JSON_PRESETS = [
+    {
+      id: "inv-central-kitchen",
+      name: "Central Kitchen",
+      period: "CENTRAL KITCHEN (182 Item)",
+      defaultSelected: true,
+      data: [{"ITEM":"ANGKAK","KATEGORI":"CENTRAL KITCHEN","GRAMASI":"GR","PL UPDATE 4 APRIL 2026":60,"PL UPDATE 11 APRIL 2026":60,"PL UPDATE 18 APRIL 2026":60,"PL UPDATE 25 APRIL 2026":60,"PL UPDATE 2 MEI 2026":60,"PL UPDATE 9 MEI 2026":66.5,"PL UPDATE 15 MEI 2026":67,"PL UPDATE 2 JUNI 2026":67,"PL UPDATE 15 JUNI 2026":67,"PL UPDATE 2 JULI 2026":66,"PL UPDATE 13 JULI 2026":66,"PL UPDATE 11 AGUSTUS 2026":66,"PL CENTRAL 11 AGUSTUS 2026":75.9,"PL UPDATE 15 OKTOBER 2026":68,"PL CENTRAL 15 OKTOBER 2026":78.2},{"ITEM":"AYAM CHARSIU","KATEGORI":"CENTRAL KITCHEN","GRAMASI":"PORSI","PL UPDATE 4 APRIL 2026":11635,"PL UPDATE 11 APRIL 2026":11635,"PL UPDATE 18 APRIL 2026":11635,"PL UPDATE 25 APRIL 2026":11635,"PL UPDATE 2 MEI 2026":11635,"PL UPDATE 9 MEI 2026":11635,"PL UPDATE 15 MEI 2026":11635,"PL UPDATE 2 JUNI 2026":11635,"PL UPDATE 15 JUNI 2026":11635,"PL UPDATE 2 JULI 2026":11635,"PL UPDATE 13 JULI 2026":11635,"PL UPDATE 11 AGUSTUS 2026":11635,"PL CENTRAL 11 AGUSTUS 2026":13380.25},{"ITEM":"AYAM CHARSIU (PROMO)","KATEGORI":"CENTRAL KITCHEN","GRAMASI":"PORSI","PL UPDATE 4 APRIL 2026":4883,"PL UPDATE 11 APRIL 2026":4883,"PL UPDATE 18 APRIL 2026":4883,"PL UPDATE 25 APRIL 2026":4883,"PL UPDATE 2 MEI 2026":4883,"PL UPDATE 9 MEI 2026":4883,"PL UPDATE 15 MEI 2026":4883,"PL UPDATE 2 JUNI 2026":4883,"PL UPDATE 15 JUNI 2026":4883,"PL UPDATE 2 JULI 2026":4883,"PL UPDATE 13 JULI 2026":4883,"PL UPDATE 11 AGUSTUS 2026":4883,"PL CENTRAL 11 AGUSTUS 2026":5615.45},{"ITEM":"AYAM CUT 5","KATEGORI":"CENTRAL KITCHEN","GRAMASI":"KG","PL UPDATE 4 APRIL 2026":40500,"PL UPDATE 11 APRIL 2026":40500,"PL UPDATE 18 APRIL 2026":40500,"PL UPDATE 25 APRIL 2026":40500,"PL UPDATE 2 MEI 2026":40500,"PL UPDATE 9 MEI 2026":40500,"PL UPDATE 15 MEI 2026":40500,"PL UPDATE 2 JUNI 2026":40500,"PL UPDATE 15 JUNI 2026":40500,"PL UPDATE 2 JULI 2026":35000,"PL UPDATE 13 JULI 2026":33000,"PL UPDATE 11 AGUSTUS 2026":36500,"PL CENTRAL 11 AGUSTUS 2026":41975,"PL UPDATE 15 OKTOBER 2026":37500,"PL CENTRAL 15 OKTOBER 2026":43125},{"ITEM":"AYAM GRILL","KATEGORI":"CENTRAL KITCHEN","GRAMASI":"PORSI","PL UPDATE 4 APRIL 2026":5124,"PL UPDATE 11 APRIL 2026":5124,"PL UPDATE 18 APRIL 2026":5124,"PL UPDATE 25 APRIL 2026":5124,"PL UPDATE 2 MEI 2026":5124,"PL UPDATE 9 MEI 2026":5124,"PL UPDATE 15 MEI 2026":5124,"PL UPDATE 2 JUNI 2026":5124,"PL UPDATE 15 JUNI 2026":5124,"PL UPDATE 2 JULI 2026":5124,"PL UPDATE 13 JULI 2026":5124,"PL UPDATE 11 AGUSTUS 2026":5124,"PL CENTRAL 11 AGUSTUS 2026":5892.6},{"ITEM":"BASED AYAM CHARSIU @5 KG","KATEGORI":"CENTRAL KITCHEN","GRAMASI":"PACK","PL UPDATE 4 APRIL 2026":110155,"PL UPDATE 11 APRIL 2026":110155,"PL UPDATE 18 APRIL 2026":110155,"PL UPDATE 25 APRIL 2026":110155,"PL UPDATE 2 MEI 2026":110155,"PL UPDATE 9 MEI 2026":110155,"PL UPDATE 15 MEI 2026":110155,"PL UPDATE 2 JUNI 2026":110155,"PL UPDATE 15 JUNI 2026":110155,"PL UPDATE 2 JULI 2026":110155,"PL UPDATE 13 JULI 2026":110155,"PL UPDATE 11 AGUSTUS 2026":110155,"PL CENTRAL 11 AGUSTUS 2026":126678.25},{"ITEM":"BASED WAGYU SANTORI @10 KG","KATEGORI":"CENTRAL KITCHEN","GRAMASI":"PACK","PL UPDATE 4 APRIL 2026":17071,"PL UPDATE 11 APRIL 2026":17071,"PL UPDATE 18 APRIL 2026":17071,"PL UPDATE 25 APRIL 2026":17071,"PL UPDATE 2 MEI 2026":17071,"PL UPDATE 9 MEI 2026":17071,"PL UPDATE 15 MEI 2026":17071,"PL UPDATE 2 JUNI 2026":17071,"PL UPDATE 15 JUNI 2026":17071,"PL UPDATE 2 JULI 2026":17071,"PL UPDATE 13 JULI 2026":17071,"PL UPDATE 11 AGUSTUS 2026":17071,"PL CENTRAL 11 AGUSTUS 2026":19631.65},{"ITEM":"KNORR","KATEGORI":"CENTRAL KITCHEN","GRAMASI":"GRAM","PL UPDATE 4 APRIL 2026":90,"PL UPDATE 11 APRIL 2026":90,"PL UPDATE 18 APRIL 2026":90,"PL UPDATE 25 APRIL 2026":90.1,"PL UPDATE 2 MEI 2026":90.1,"PL UPDATE 9 MEI 2026":90.1,"PL UPDATE 15 MEI 2026":90,"PL UPDATE 2 JUNI 2026":90,"PL UPDATE 15 JUNI 2026":90,"PL UPDATE 2 JULI 2026":90,"PL UPDATE 13 JULI 2026":90,"PL UPDATE 11 AGUSTUS 2026":90,"PL CENTRAL 11 AGUSTUS 2026":103.5},{"ITEM":"MARGARINE","KATEGORI":"CENTRAL KITCHEN","GRAMASI":"GRAM","PL UPDATE 4 APRIL 2026":21,"PL UPDATE 11 APRIL 2026":21,"PL UPDATE 18 APRIL 2026":21,"PL UPDATE 25 APRIL 2026":21,"PL UPDATE 2 MEI 2026":21,"PL UPDATE 9 MEI 2026":20.6,"PL UPDATE 15 MEI 2026":21,"PL UPDATE 2 JUNI 2026":21,"PL UPDATE 15 JUNI 2026":21,"PL UPDATE 2 JULI 2026":21,"PL UPDATE 13 JULI 2026":21,"PL UPDATE 11 AGUSTUS 2026":21,"PL CENTRAL 11 AGUSTUS 2026":24.15},{"ITEM":"MINYAK GORENG","KATEGORI":"CENTRAL KITCHEN","GRAMASI":"ML","PL UPDATE 4 APRIL 2026":19,"PL UPDATE 11 APRIL 2026":19,"PL UPDATE 18 APRIL 2026":19,"PL UPDATE 25 APRIL 2026":19,"PL UPDATE 2 MEI 2026":19,"PL UPDATE 9 MEI 2026":19.4,"PL UPDATE 15 MEI 2026":19,"PL UPDATE 2 JUNI 2026":19.5,"PL UPDATE 15 JUNI 2026":19.5,"PL UPDATE 2 JULI 2026":19.3,"PL UPDATE 13 JULI 2026":19.3,"PL UPDATE 11 AGUSTUS 2026":19.3,"PL CENTRAL 11 AGUSTUS 2026":22.195},{"ITEM":"ROSEMARRY","KATEGORI":"CENTRAL KITCHEN","GRAMASI":"GR","PL UPDATE 15 JUNI 2026":78,"PL UPDATE 2 JULI 2026":78,"PL UPDATE 13 JULI 2026":78,"PL UPDATE 11 AGUSTUS 2026":78,"PL CENTRAL 11 AGUSTUS 2026":89.7},{"ITEM":"TOMAT","KATEGORI":"CENTRAL KITCHEN","GRAMASI":"GR","PL UPDATE 15 MEI 2026":20,"PL UPDATE 2 JUNI 2026":20,"PL UPDATE 15 JUNI 2026":20,"PL UPDATE 2 JULI 2026":20,"PL UPDATE 13 JULI 2026":20,"PL UPDATE 11 AGUSTUS 2026":14,"PL CENTRAL 11 AGUSTUS 2026":16.1,"PL UPDATE 15 OKTOBER 2026":16,"PL CENTRAL 15 OKTOBER 2026":18.4},{"ITEM":"TOMATO SAUCE","KATEGORI":"CENTRAL KITCHEN","GRAMASI":"GRAM"},{"ITEM":"WAGYU SANTORI","KATEGORI":"CENTRAL KITCHEN","GRAMASI":"PORSI","PL UPDATE 4 APRIL 2026":22030,"PL UPDATE 11 APRIL 2026":22030,"PL UPDATE 18 APRIL 2026":22030,"PL UPDATE 25 APRIL 2026":22030,"PL UPDATE 2 MEI 2026":22030,"PL UPDATE 9 MEI 2026":22030,"PL UPDATE 15 MEI 2026":22030,"PL UPDATE 2 JUNI 2026":22030,"PL UPDATE 15 JUNI 2026":22030,"PL UPDATE 2 JULI 2026":22030,"PL UPDATE 13 JULI 2026":22030,"PL UPDATE 11 AGUSTUS 2026":22030,"PL CENTRAL 11 AGUSTUS 2026":25334.5}]
+    },
+    {
+      id: "inv-central-storage",
+      name: "Central Storage",
+      period: "CENTRAL STORAGE (250 Item)",
+      defaultSelected: true,
+      data: [{"ITEM":"ABON 500 gr","KATEGORI":"CENTRAL STORAGE","GRAMASI":"PCK","PL UPDATE 4 APRIL 2026":84175,"PL UPDATE 11 APRIL 2026":84175,"PL UPDATE 18 APRIL 2026":70795,"PL UPDATE 25 APRIL 2026":72500,"PL UPDATE 2 MEI 2026":72500,"PL UPDATE 9 MEI 2026":72500,"PL UPDATE 15 MEI 2026":72500,"PL UPDATE 2 JUNI 2026":72500,"PL UPDATE 15 JUNI 2026":72500,"PL UPDATE 2 JULI 2026":67000,"PL UPDATE 13 JULI 2026":69440,"PL UPDATE 11 AGUSTUS 2026":69440,"PL UPDATE 1 SEPTEMBER 2026":69440,"PL CENTRAL 11 SEPTEMBER 2026":76384,"PL UPDATE 15 OKTOBER 2026":70500,"PL CENTRAL 15 OKTOBER 2026":77550},{"ITEM":"AMPLOP CUTTLERIES","KATEGORI":"CENTRAL STORAGE","GRAMASI":"PCS","PL UPDATE 4 APRIL 2026":416,"PL UPDATE 11 APRIL 2026":416,"PL UPDATE 18 APRIL 2026":429,"PL UPDATE 25 APRIL 2026":429,"PL UPDATE 2 MEI 2026":429,"PL UPDATE 9 MEI 2026":429,"PL UPDATE 15 MEI 2026":426,"PL UPDATE 2 JUNI 2026":451,"PL UPDATE 15 JUNI 2026":451,"PL UPDATE 2 JULI 2026":451,"PL UPDATE 13 JULI 2026":428.3,"PL UPDATE 11 AGUSTUS 2026":428,"PL UPDATE 1 SEPTEMBER 2026":428,"PL CENTRAL 11 SEPTEMBER 2026":470.8,"PL UPDATE 15 OKTOBER 2026":450,"PL CENTRAL 15 OKTOBER 2026":495},{"ITEM":"BANANA SYRUP","KATEGORI":"CENTRAL STORAGE","GRAMASI":"BOTOL","PL UPDATE 4 APRIL 2026":100000,"PL UPDATE 11 APRIL 2026":100000,"PL UPDATE 18 APRIL 2026":100000,"PL UPDATE 25 APRIL 2026":100000,"PL UPDATE 2 MEI 2026":100000,"PL UPDATE 9 MEI 2026":100000,"PL UPDATE 15 MEI 2026":100000,"PL UPDATE 2 JUNI 2026":100000,"PL UPDATE 15 JUNI 2026":100000,"PL UPDATE 2 JULI 2026":100000,"PL UPDATE 13 JULI 2026":100000,"PL UPDATE 11 AGUSTUS 2026":100000,"PL UPDATE 1 SEPTEMBER 2026":100000,"PL CENTRAL 11 SEPTEMBER 2026":110000,"PL UPDATE 15 OKTOBER 2026":100000,"PL CENTRAL 15 OKTOBER 2026":110000},{"ITEM":"BAWANG MERAH GORENG","KATEGORI":"CENTRAL STORAGE","GRAMASI":"PACK","PL UPDATE 4 APRIL 2026":95000,"PL UPDATE 11 APRIL 2026":95000,"PL UPDATE 18 APRIL 2026":95000,"PL UPDATE 25 APRIL 2026":95000,"PL UPDATE 2 MEI 2026":95000,"PL UPDATE 9 MEI 2026":95000,"PL UPDATE 15 MEI 2026":95000,"PL UPDATE 2 JUNI 2026":95000,"PL UPDATE 15 JUNI 2026":95000,"PL UPDATE 2 JULI 2026":95000,"PL UPDATE 13 JULI 2026":95000,"PL UPDATE 11 AGUSTUS 2026":95000,"PL UPDATE 1 SEPTEMBER 2026":95000,"PL CENTRAL 11 SEPTEMBER 2026":104500,"PL UPDATE 15 OKTOBER 2026":95000,"PL CENTRAL 15 OKTOBER 2026":104500},{"ITEM":"BAWANG PUTIH GORENG","KATEGORI":"CENTRAL STORAGE","GRAMASI":"PACK","PL UPDATE 4 APRIL 2026":95000,"PL UPDATE 11 APRIL 2026":95000,"PL UPDATE 18 APRIL 2026":95000,"PL UPDATE 25 APRIL 2026":95000,"PL UPDATE 2 MEI 2026":95000,"PL UPDATE 9 MEI 2026":95000,"PL UPDATE 15 MEI 2026":95000,"PL UPDATE 2 JUNI 2026":95000,"PL UPDATE 15 JUNI 2026":95000,"PL UPDATE 2 JULI 2026":95000,"PL UPDATE 13 JULI 2026":95000,"PL UPDATE 11 AGUSTUS 2026":95000,"PL UPDATE 1 SEPTEMBER 2026":95000,"PL CENTRAL 11 SEPTEMBER 2026":104500,"PL UPDATE 15 OKTOBER 2026":95000,"PL CENTRAL 15 OKTOBER 2026":104500},{"ITEM":"KNORR","KATEGORI":"CENTRAL STORAGE","GRAMASI":"PACK","PL UPDATE 4 APRIL 2026":90100,"PL UPDATE 11 APRIL 2026":90100,"PL UPDATE 18 APRIL 2026":90100,"PL UPDATE 25 APRIL 2026":90100,"PL UPDATE 2 MEI 2026":90100,"PL UPDATE 9 MEI 2026":90100,"PL UPDATE 15 MEI 2026":90100,"PL UPDATE 2 JUNI 2026":90100,"PL UPDATE 15 JUNI 2026":90100,"PL UPDATE 2 JULI 2026":90100,"PL UPDATE 13 JULI 2026":90100,"PL UPDATE 11 AGUSTUS 2026":90100,"PL UPDATE 1 SEPTEMBER 2026":90100,"PL CENTRAL 11 SEPTEMBER 2026":99110,"PL UPDATE 15 OKTOBER 2026":92803,"PL CENTRAL 15 OKTOBER 2026":102083.3},{"ITEM":"MARGARINE","KATEGORI":"CENTRAL STORAGE","GRAMASI":"CART","PL UPDATE 4 APRIL 2026":309000,"PL UPDATE 11 APRIL 2026":309000,"PL UPDATE 18 APRIL 2026":309000,"PL UPDATE 25 APRIL 2026":309000,"PL UPDATE 2 MEI 2026":309000,"PL UPDATE 9 MEI 2026":309000,"PL UPDATE 15 MEI 2026":309000,"PL UPDATE 2 JUNI 2026":309000,"PL UPDATE 15 JUNI 2026":309000,"PL UPDATE 2 JULI 2026":315000,"PL UPDATE 13 JULI 2026":320000,"PL UPDATE 11 AGUSTUS 2026":320000,"PL UPDATE 1 SEPTEMBER 2026":320000,"PL CENTRAL 11 SEPTEMBER 2026":352000,"PL UPDATE 15 OKTOBER 2026":262500,"PL CENTRAL 15 OKTOBER 2026":288750},{"ITEM":"MINYAK GORENG","KATEGORI":"CENTRAL STORAGE","GRAMASI":"CART","PL UPDATE 4 APRIL 2026":348500,"PL UPDATE 11 APRIL 2026":351000,"PL UPDATE 18 APRIL 2026":351000,"PL UPDATE 25 APRIL 2026":351000,"PL UPDATE 2 MEI 2026":351000,"PL UPDATE 9 MEI 2026":351000,"PL UPDATE 15 MEI 2026":352000,"PL UPDATE 2 JUNI 2026":351000,"PL UPDATE 15 JUNI 2026":351000,"PL UPDATE 2 JULI 2026":349000,"PL UPDATE 13 JULI 2026":344750,"PL UPDATE 11 AGUSTUS 2026":349750,"PL UPDATE 1 SEPTEMBER 2026":358202,"PL CENTRAL 11 SEPTEMBER 2026":394022.2,"PL UPDATE 15 OKTOBER 2026":358000,"PL CENTRAL 15 OKTOBER 2026":393800},{"ITEM":"RICE PAPER PUTIH","KATEGORI":"CENTRAL STORAGE","GRAMASI":"PACK","PL UPDATE 11 APRIL 2026":7500,"PL UPDATE 18 APRIL 2026":7500,"PL UPDATE 25 APRIL 2026":7500,"PL UPDATE 2 MEI 2026":7500,"PL UPDATE 9 MEI 2026":7500,"PL UPDATE 15 MEI 2026":7500,"PL UPDATE 2 JUNI 2026":7500,"PL UPDATE 15 JUNI 2026":7500,"PL UPDATE 2 JULI 2026":7500,"PL UPDATE 13 JULI 2026":7500,"PL UPDATE 11 AGUSTUS 2026":7500,"PL UPDATE 1 SEPTEMBER 2026":7500,"PL CENTRAL 11 SEPTEMBER 2026":8250,"PL UPDATE 15 OKTOBER 2026":7500,"PL CENTRAL 15 OKTOBER 2026":8250},{"ITEM":"ROSEMARRY","KATEGORI":"CENTRAL STORAGE","GRAMASI":"GR","PL UPDATE 11 APRIL 2026":76,"PL UPDATE 18 APRIL 2026":76,"PL UPDATE 25 APRIL 2026":76,"PL UPDATE 2 MEI 2026":76,"PL UPDATE 9 MEI 2026":76,"PL UPDATE 15 MEI 2026":76,"PL UPDATE 2 JUNI 2026":76,"PL UPDATE 15 JUNI 2026":78,"PL UPDATE 2 JULI 2026":78,"PL UPDATE 13 JULI 2026":78,"PL UPDATE 11 AGUSTUS 2026":78,"PL UPDATE 1 SEPTEMBER 2026":78,"PL CENTRAL 11 SEPTEMBER 2026":85.8,"PL UPDATE 15 OKTOBER 2026":78,"PL CENTRAL 15 OKTOBER 2026":85.8},{"ITEM":"TOMATO PASTE","KATEGORI":"CENTRAL STORAGE","GRAMASI":"GRAM"},{"ITEM":"TOMATO SAUCE","KATEGORI":"CENTRAL STORAGE","GRAMASI":"JRG","PL UPDATE 4 APRIL 2026":67820,"PL UPDATE 11 APRIL 2026":67820,"PL UPDATE 18 APRIL 2026":67820,"PL UPDATE 25 APRIL 2026":67820,"PL UPDATE 2 MEI 2026":67820,"PL UPDATE 9 MEI 2026":67820,"PL UPDATE 15 MEI 2026":69440,"PL UPDATE 2 JUNI 2026":69440,"PL UPDATE 15 JUNI 2026":69440,"PL UPDATE 2 JULI 2026":69440,"PL UPDATE 13 JULI 2026":69440,"PL UPDATE 11 AGUSTUS 2026":69440,"PL UPDATE 1 SEPTEMBER 2026":69440,"PL CENTRAL 11 SEPTEMBER 2026":76384,"PL UPDATE 15 OKTOBER 2026":69441,"PL CENTRAL 15 OKTOBER 2026":76385.1},{"ITEM":"TOMATO SAUCE ( SACHET )","KATEGORI":"CENTRAL STORAGE","GRAMASI":"PACK","PL UPDATE 4 APRIL 2026":2030,"PL UPDATE 11 APRIL 2026":2030,"PL UPDATE 18 APRIL 2026":2030,"PL UPDATE 25 APRIL 2026":5436,"PL UPDATE 2 MEI 2026":5436,"PL UPDATE 9 MEI 2026":5436,"PL UPDATE 15 MEI 2026":5436,"PL UPDATE 2 JUNI 2026":5436,"PL UPDATE 15 JUNI 2026":5436,"PL UPDATE 2 JULI 2026":5436,"PL UPDATE 13 JULI 2026":5436,"PL UPDATE 11 AGUSTUS 2026":5436,"PL UPDATE 1 SEPTEMBER 2026":5436,"PL CENTRAL 11 SEPTEMBER 2026":5979.6,"PL UPDATE 15 OKTOBER 2026":5437,"PL CENTRAL 15 OKTOBER 2026":5980.7}]
+    }
+  ];
+
+  // State Global
+  var availableJsonPresets = [];
+  var selectedDatasetIds = {}; // Map id -> boolean
+  var selectedCustomPeriods = {}; // Map colName -> boolean
+
+  var normalizedRefItems = [];
+  var discoveredPeriodNames = []; // Terurut kronologis dari April s/d Terbaru
+
+  var rawHppSelection = null;
+  var hppComparisonRows = [];
+  var activeTablePeriodCols = [];
+
+  var MONTH_MAP_ID = {
+    JANUARI: 1, JAN: 1,
+    FEBRUARI: 2, FEB: 2,
+    MARET: 3, MAR: 3,
+    APRIL: 4, APR: 4,
+    MEI: 5, MAY: 5,
+    JUNI: 6, JUN: 6,
+    JULI: 7, JUL: 7,
+    AGUSTUS: 8, AGU: 8, AUG: 8,
+    SEPTEMBER: 9, SEP: 9, SEPT: 9,
+    OKTOBER: 10, OKT: 10, OCT: 10,
+    NOVEMBER: 11, NOV: 11,
+    DESEMBER: 12, DES: 12, DEC: 12
+  };
+
+  function parsePeriodColumnMeta(colName) {
+    var upper = String(colName || "").toUpperCase().replace(/_\d+$/, "").replace(/\s+/g, " ").trim();
+    var isCentral = upper.indexOf("PL CENTRAL") !== -1;
+    var type = isCentral ? "PL CENTRAL" : "PL UPDATE";
+    var datePart = upper.replace(/^PL\s+(UPDATE|CENTRAL)\s*/i, "").trim();
+
+    var day = 1;
+    var monthNum = 0;
+    var monthShort = "";
+    var year = 2026;
+
+    var tokens = datePart.split(" ");
+    for (var i = 0; i < tokens.length; i++) {
+      var t = tokens[i];
+      if (/^\d{1,2}$/.test(t)) {
+        day = parseInt(t, 10);
+      } else if (/^\d{4}$/.test(t)) {
+        year = parseInt(t, 10);
+      } else if (MONTH_MAP_ID[t]) {
+        monthNum = MONTH_MAP_ID[t];
+        monthShort = t.slice(0, 3);
+      }
+    }
+
+    var sortKey = year * 100000 + monthNum * 1000 + day * 10 + (isCentral ? 2 : 1);
+    var isAugustOrLater = year > 2026 || (year === 2026 && monthNum >= 8) || monthNum >= 8;
+    var shortLabel = day + " " + (monthShort || datePart) + " (" + (isCentral ? "Ctr" : "Upd") + ")";
+
+    return {
+      colName: upper,
+      type: type,
+      dateLabel: datePart,
+      shortLabel: shortLabel,
+      day: day,
+      monthNum: monthNum,
+      year: year,
+      sortKey: sortKey,
+      isAugustOrLater: isAugustOrLater
+    };
+  }
+
+  function initReferenceJsonPresets() {
+    var localCustom = [];
+    try {
+      var saved = localStorage.getItem("AUDIT_CUSTOM_JSON_PRESETS");
+      if (saved) localCustom = JSON.parse(saved) || [];
+    } catch (e) {}
+
+    if (hasGoogleScriptRun()) {
+      google.script.run
+        .withSuccessHandler(function (presets) {
+          var list = Array.isArray(presets) && presets.length > 0 ? presets : FALLBACK_JSON_PRESETS;
+          availableJsonPresets = deduplicatePresetList(list.concat(localCustom));
+          initDefaultCheckedDatasets();
+          renderJsonDatasetChecklist();
+          rebuildMergedInventoryFromSelected();
+        })
+        .withFailureHandler(function () {
+          availableJsonPresets = deduplicatePresetList(FALLBACK_JSON_PRESETS.concat(localCustom));
+          initDefaultCheckedDatasets();
+          renderJsonDatasetChecklist();
+          rebuildMergedInventoryFromSelected();
+        })
+        .getAvailableReferenceJsonPresets();
+    } else {
+      availableJsonPresets = deduplicatePresetList(FALLBACK_JSON_PRESETS.concat(localCustom));
+      initDefaultCheckedDatasets();
+      renderJsonDatasetChecklist();
+      rebuildMergedInventoryFromSelected();
+    }
+  }
+
+  function deduplicatePresetList(list) {
+    var seen = {};
+    var out = [];
+    (list || []).forEach(function (item) {
+      if (!item || !item.id) return;
+      if (item.id === "merged-kitchen-storage-default") return;
+      if (!seen[item.id]) {
+        seen[item.id] = true;
+        out.push(item);
+      }
+    });
+    return out.length > 0 ? out : FALLBACK_JSON_PRESETS.slice();
+  }
+
+  function initDefaultCheckedDatasets() {
+    var anyChecked = Object.keys(selectedDatasetIds).some(function (k) { return selectedDatasetIds[k]; });
+    if (!anyChecked) {
+      availableJsonPresets.forEach(function (p) {
+        selectedDatasetIds[p.id] = p.defaultSelected !== false;
+      });
+    }
+  }
+
+  function extractArrayFromRawJson(parsed) {
+    if (Array.isArray(parsed)) return parsed;
+    if (!parsed || typeof parsed !== "object") return [];
+    if (Array.isArray(parsed.data)) return parsed.data;
+    return [];
+  }
+
+  function renderJsonDatasetChecklist() {
+    var container = document.getElementById("jsonDatasetChecklist");
+    if (!container) return;
+
+    container.innerHTML = availableJsonPresets
+      .map(function (preset) {
+        var isChecked = Boolean(selectedDatasetIds[preset.id]);
+        var rows = extractArrayFromRawJson(preset.data);
+        var borderClass = isChecked
+          ? "border-emerald-500 bg-emerald-50/60"
+          : "border-slate-200 bg-slate-50 opacity-75";
+
+        return (
+          '<label class="flex items-center justify-between gap-2 p-2 rounded-md border cursor-pointer select-none transition-colors ' +
+          borderClass +
+          '">' +
+          '<div class="flex items-center gap-2 min-w-0">' +
+          '<input type="checkbox" ' +
+          (isChecked ? "checked" : "") +
+          ' onchange="handleToggleDatasetCheckbox(\'' +
+          escapeHtml(preset.id) +
+          '\', this.checked)" class="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 shrink-0" />' +
+          '<div class="truncate">' +
+          '<div class="text-xs font-bold text-slate-800 truncate">' +
+          escapeHtml(preset.name) +
+          "</div>" +
+          '<div class="text-[10px] text-slate-500 truncate">' +
+          escapeHtml(preset.period || "Dataset JSON") +
+          "</div>" +
+          "</div>" +
+          "</div>" +
+          '<span class="shrink-0 text-[10px] font-mono font-semibold px-1.5 py-0.5 rounded bg-white border border-slate-200 text-slate-700">' +
+          rows.length +
+          " item</span>" +
+          "</label>"
+        );
+      })
+      .join("");
+  }
+
+  function handleToggleDatasetCheckbox(datasetId, isChecked) {
+    selectedDatasetIds[datasetId] = Boolean(isChecked);
+    renderJsonDatasetChecklist();
+    rebuildMergedInventoryFromSelected();
+  }
+
+  function selectAllJsonDatasets(selectAll) {
+    availableJsonPresets.forEach(function (p) {
+      selectedDatasetIds[p.id] = Boolean(selectAll);
+    });
+    renderJsonDatasetChecklist();
+    rebuildMergedInventoryFromSelected();
+  }
+
+  function rebuildMergedInventoryFromSelected() {
+    var activePresets = availableJsonPresets.filter(function (p) {
+      return Boolean(selectedDatasetIds[p.id]);
+    });
+
+    var combinedRawRows = [];
+    activePresets.forEach(function (preset) {
+      var rows = extractArrayFromRawJson(preset.data);
+      rows.forEach(function (r) {
+        if (r && typeof r === "object") {
+          var copy = Object.assign({}, r);
+          if (!copy.KATEGORI && !copy.Kategori) {
+            copy.KATEGORI = preset.name;
+          }
+          copy.__sourceDatasetName = preset.name;
+          combinedRawRows.push(copy);
+        }
+      });
+    });
+
+    normalizedRefItems = normalizeInventoryItems(combinedRawRows);
+    renderCustomPeriodChecklist();
+
+    var activeNames = activePresets.map(function (p) { return p.name; });
+    var summaryTextEl = document.getElementById("jsonPresetCountText");
+    var badgeEl = document.getElementById("jsonPresetPeriodBadge");
+    var breakdownEl = document.getElementById("jsonCategoryBreakdown");
+
+    var augCount = discoveredPeriodNames.filter(function (col) {
+      return parsePeriodColumnMeta(col).isAugustOrLater;
+    }).length;
+
+    if (activePresets.length === 0) {
+      summaryTextEl.textContent = "⚠ Belum ada data pembanding yang dicentang!";
+      badgeEl.textContent = "0 dipilih";
+      breakdownEl.textContent = "Silakan centang minimal 1 sumber data JSON di atas.";
+    } else {
+      summaryTextEl.textContent =
+        "✓ " + activePresets.length + " Sumber Aktif (" + normalizedRefItems.length + " Item)";
+      badgeEl.textContent = augCount + " Kolom Agu+";
+      breakdownEl.textContent = "Digabung dari: " + activeNames.join(" + ");
+    }
+
+    if (rawHppSelection) {
+      recomputeHppComparison();
+    }
+  }
+
+  function normalizeInventoryItems(rawArray) {
+    var items = [];
+    var periodSet = {};
+    var count = 1;
+    var dedupMap = {};
+
+    (rawArray || []).forEach(function (obj) {
+      if (!obj || typeof obj !== "object") return;
+      var entries = Object.entries(obj);
+
+      var rawName = null;
+      var rawKategori = obj.__sourceDatasetName || null;
+      var rawGramasi = null;
+      var priceByCol = {};
+
+      for (var i = 0; i < entries.length; i++) {
+        var key = String(entries[i][0] || "").trim().replace(/\s+/g, " ");
+        if (key === "__sourceDatasetName") continue;
+        var val = entries[i][1];
+        var normK = normalizeKey(key);
+
+        if (!rawName && (normK === "item" || normK === "namabahan" || normK === "bahan")) {
+          rawName = val;
+          continue;
+        }
+        if (normK.indexOf("kategori") !== -1 && val) {
+          rawKategori = val;
+          continue;
+        }
+        if (!rawGramasi && (normK.indexOf("gramasi") !== -1 || normK === "satuan" || normK.indexOf("kemasan") !== -1)) {
+          rawGramasi = val;
+          continue;
+        }
+
+        var upperKey = key.toUpperCase();
+        if (upperKey.indexOf("PL UPDATE") !== -1 || upperKey.indexOf("PL CENTRAL") !== -1) {
+          var meta = parsePeriodColumnMeta(upperKey);
+          var cleanLabel = meta.colName;
+          var numPrice = parseNum(val);
+
+          if (numPrice !== null && numPrice > 0) {
+            priceByCol[cleanLabel] = numPrice;
+            if (!periodSet[cleanLabel]) {
+              periodSet[cleanLabel] = meta;
+              if (selectedCustomPeriods[cleanLabel] === undefined) {
+                selectedCustomPeriods[cleanLabel] = meta.isAugustOrLater;
+              }
+            }
+          }
+        }
+      }
+
+      if (!rawName || String(rawName).trim() === "") return;
+      var itemName = String(rawName).trim();
+      var kategori = rawKategori ? String(rawKategori).trim().toUpperCase() : "INVENTORY";
+      var gramasiUnit = rawGramasi ? String(rawGramasi).trim().toUpperCase() : "-";
+
+      var dedupKey = normalizeKey(itemName) + "__" + normalizeKey(kategori);
+      if (dedupMap[dedupKey]) {
+        var existingItem = dedupMap[dedupKey];
+        Object.keys(priceByCol).forEach(function (col) {
+          if (!existingItem.priceByCol[col] && priceByCol[col] > 0) {
+            existingItem.priceByCol[col] = priceByCol[col];
+          }
+        });
+        return;
+      }
+
+      var newItem = {
+        id: "inv-" + (count++),
+        itemName: itemName,
+        kategori: kategori,
+        gramasiUnit: gramasiUnit,
+        priceByCol: priceByCol
+      };
+      dedupMap[dedupKey] = newItem;
+      items.push(newItem);
+    });
+
+    discoveredPeriodNames = Object.keys(periodSet).sort(function (a, b) {
+      return periodSet[a].sortKey - periodSet[b].sortKey;
+    });
+
+    return items;
+  }
+
+  function getActiveTablePeriodColumns() {
+    var filterEl = document.getElementById("selectPeriodFilter");
+    var mode = filterEl ? filterEl.value : "AUGUST_ONWARDS";
+
+    if (mode === "CUSTOM_MULTI") {
+      return discoveredPeriodNames.filter(function (col) {
+        return Boolean(selectedCustomPeriods[col]);
+      });
+    }
+
+    if (mode === "ALL_NON_ZERO") {
+      return discoveredPeriodNames.slice();
+    }
+
+    var augCols = discoveredPeriodNames.filter(function (col) {
+      return parsePeriodColumnMeta(col).isAugustOrLater;
+    });
+    return augCols.length > 0 ? augCols : discoveredPeriodNames.slice();
+  }
+
+  function handlePeriodFilterModeChange(mode) {
+    var customBox = document.getElementById("customPeriodMultiBox");
+    if (mode === "CUSTOM_MULTI") {
+      customBox.classList.remove("hidden");
+      renderCustomPeriodChecklist();
+    } else {
+      customBox.classList.add("hidden");
+    }
+    recomputeHppComparison();
+  }
+
+  function renderCustomPeriodChecklist() {
+    var container = document.getElementById("customPeriodChecklist");
+    if (!container) return;
+
+    container.innerHTML = discoveredPeriodNames
+      .map(function (colName) {
+        var checked = Boolean(selectedCustomPeriods[colName]);
+        var isCentral = colName.indexOf("PL CENTRAL") !== -1;
+        var badgeColor = isCentral ? "text-indigo-700 bg-indigo-50" : "text-emerald-700 bg-emerald-50";
+        return (
+          '<label class="flex items-center gap-2 px-1.5 py-1 rounded hover:bg-slate-50 cursor-pointer select-none text-[11px]">' +
+          '<input type="checkbox" ' +
+          (checked ? "checked" : "") +
+          ' onchange="handleToggleCustomPeriod(\'' +
+          escapeHtml(colName) +
+          '\', this.checked)" class="h-3.5 w-3.5 rounded border-slate-300 text-emerald-600" />' +
+          '<span class="font-mono text-[10px] px-1 rounded ' +
+          badgeColor +
+          '">' +
+          escapeHtml(colName) +
+          "</span>" +
+          "</label>"
+        );
+      })
+      .join("");
+  }
+
+  function handleToggleCustomPeriod(colName, isChecked) {
+    selectedCustomPeriods[colName] = Boolean(isChecked);
+    recomputeHppComparison();
+  }
+
+  function toggleAllCustomPeriods(selectAll) {
+    discoveredPeriodNames.forEach(function (c) {
+      selectedCustomPeriods[c] = Boolean(selectAll);
+    });
+    renderCustomPeriodChecklist();
+    recomputeHppComparison();
+  }
+
+  function toggleAddJsonPanel() {
+    document.getElementById("addJsonPanel").classList.toggle("hidden");
+  }
+
+  function handleUploadNewJsonFile(e) {
+    var file = e.target.files && e.target.files[0];
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function (evt) {
+      document.getElementById("newJsonRawInput").value = evt.target.result || "";
+      var nameInput = document.getElementById("newJsonNameInput");
+      if (!nameInput.value) {
+        nameInput.value = file.name.replace(/\.json$/i, "");
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  function handleSaveNewJsonPreset() {
+    var nameVal = document.getElementById("newJsonNameInput").value.trim() || ("Data JSON " + (availableJsonPresets.length + 1));
+    var rawText = document.getElementById("newJsonRawInput").value.trim();
+    if (!rawText) {
+      showAuditStatus("error", "Paste isi JSON atau upload file .json terlebih dahulu.");
+      return;
+    }
+
+    try {
+      var parsed = JSON.parse(rawText);
+      var arr = extractArrayFromRawJson(parsed);
+      var testNorm = normalizeInventoryItems(arr);
+      if (testNorm.length === 0) {
+        showAuditStatus("error", "JSON harus memiliki kolom ITEM/Bahan dan kolom PL UPDATE / PL CENTRAL.");
+        return;
+      }
+
+      var newPreset = {
+        id: "custom-json-" + new Date().getTime(),
+        name: nameVal,
+        period: (parsed.metadata && parsed.metadata.sourceSheet) || "Custom JSON",
+        defaultSelected: true,
+        data: arr
+      };
+
+      try {
+        var existingLocal = JSON.parse(localStorage.getItem("AUDIT_CUSTOM_JSON_PRESETS") || "[]");
+        existingLocal.push(newPreset);
+        localStorage.setItem("AUDIT_CUSTOM_JSON_PRESETS", JSON.stringify(existingLocal));
+      } catch (err) {}
+
+      if (hasGoogleScriptRun()) {
+        google.script.run.saveCustomReferenceJsonPreset(newPreset);
+      }
+
+      availableJsonPresets.push(newPreset);
+      selectedDatasetIds[newPreset.id] = true;
+      renderJsonDatasetChecklist();
+      rebuildMergedInventoryFromSelected();
+
+      document.getElementById("addJsonPanel").classList.add("hidden");
+      document.getElementById("newJsonNameInput").value = "";
+      document.getElementById("newJsonRawInput").value = "";
+      showAuditStatus("success", 'Sumber data "' + nameVal + '" berhasil ditambahkan & dicentang!');
+    } catch (err) {
+      showAuditStatus("error", "Format JSON tidak valid: " + err.message);
+    }
+  }
+
+  function collapseDoubleChars(str) {
+    return String(str || "")
+      .replace(/gg/g, "g")
+      .replace(/rr/g, "r")
+      .replace(/ll/g, "l")
+      .replace(/ss/g, "s")
+      .replace(/mm/g, "m")
+      .replace(/nn/g, "n")
+      .replace(/pp/g, "p")
+      .replace(/tt/g, "t");
+  }
+
+  function cleanIngredientName(str) {
+    return collapseDoubleChars(
+      String(str || "")
+        .toLowerCase()
+        .replace(/@\s*\d+(\.\d+)?\s*(gr|gram|ml|kg|pcs|porsi|pack|pck)?/gi, " ")
+        .replace(/\b\d+(\.\d+)?\s*(gr|gram|kg|ml|l|liter|pcs|porsi|pinch|pck|pack|rim|botol|cart|jrg|drg)\b/gi, " ")
+        .replace(/[^a-z0-9\s]/g, " ")
+        .replace(/\s+/g, " ")
+        .trim()
+    );
+  }
+
+  function stripDescriptorWords(str) {
+    return String(str || "")
+      .replace(/\b(fresh|mentah|kupas|putih|besar|kecil|new|promo|central|sachet|reguler|regular)\b/gi, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
+  function calcIngredientSimilarity(hppName, refItem) {
+    var rawA = String(hppName || "").toLowerCase().trim();
+    var rawB = String(refItem.itemName || "").toLowerCase().trim();
+    if (!rawA || !rawB) return 0;
+
+    var allPrices = Object.values(refItem.priceByCol || {});
+    var hasNonZero = allPrices.some(function (v) { return v && v > 0; });
+    var activeBonus = hasNonZero ? 0.02 : -0.15;
+
+    if (rawA === rawB) return 1 + activeBonus;
+
+    var ca = cleanIngredientName(rawA);
+    var cb = cleanIngredientName(rawB);
+    if (!ca || !cb) return 0;
+    if (ca === cb) return 0.96 + activeBonus;
+
+    var sa = stripDescriptorWords(ca);
+    var sb = stripDescriptorWords(cb);
+    if (sa && sb && sa === sb) return 0.93 + activeBonus;
+
+    var minLen = Math.min(ca.length, cb.length);
+    var caWords = ca.split(" ");
+    var cbWords = cb.split(" ");
+    if (minLen >= 4 && (caWords.indexOf(cb) !== -1 || cbWords.indexOf(ca) !== -1 || ca.indexOf(cb) === 0 || cb.indexOf(ca) === 0)) {
+      return 0.86 + activeBonus;
+    }
+    var minLenS = Math.min((sa || "").length, (sb || "").length);
+    var saWords = (sa || "").split(" ");
+    var sbWords = (sb || "").split(" ");
+    if (minLenS >= 4 && sa && sb && (saWords.indexOf(sb) !== -1 || sbWords.indexOf(sa) !== -1 || sa.indexOf(sb) === 0 || sb.indexOf(sa) === 0)) {
+      return 0.82 + activeBonus;
+    }
+
+    var ta = (sa || ca).split(" ").filter(function (t) { return t.length > 1; });
+    var tb = (sb || cb).split(" ").filter(function (t) { return t.length > 1; });
+    if (!ta.length || !tb.length) return 0;
+
+    var overlap = 0;
+    ta.forEach(function (w) {
+      if (tb.some(function (tw) { return tw === w || (w.length >= 4 && tw.length >= 4 && (tw.indexOf(w) === 0 || w.indexOf(tw) === 0)); })) {
+        overlap++;
+      }
+    });
+    if (overlap === 0) return 0;
+    return (overlap / Math.max(ta.length, tb.length)) + activeBonus;
+  }
+
+  function isLikelyHeaderRow(row) {
+    if (!Array.isArray(row) || row.length === 0) return false;
+    var c0 = normalizeKey(row[0]);
+    var c1 = normalizeKey(row[1]);
+    return (c0 === "bahan" || c0 === "namabahan" || c0 === "item") && (c1.indexOf("gramasi") !== -1 || c1.indexOf("satuan") !== -1);
+  }
+
+  function loadSample10RowsHpp() {
+    rawHppSelection = {
+      sheetName: "HPP RESEP",
+      address: "B5:I14",
+      startRow: 5,
+      startCol: 2,
+      rowCount: 10,
+      columnCount: 8,
+      values: [
+        ["FF @100gr", 100, "gr", 2000, 44100, 22, 2205, 221],
+        ["saus mushroom@30gr", 1, "porsi", null, null, 1500, 1500, 150],
+        ["waggyu santori", 2, "porsi", 1, 25612, 25612, 51224, 5122],
+        ["selada air", 10, "gr", 1000, 13000, 13, 130, 13],
+        ["tomat cherry", 10, "gr", 1000, 90000, 90, 900, 90],
+        ["margarine", 10, "gr", 15000, 339900, 23, 227, 23],
+        ["knor", 1, "pinch", 1000, 99110, 99, 99, 10],
+        ["minyak", 50, "gr", 12000, 220000, 18.33, 917, 92],
+        ["rosemarry fresh", 1, "pcs", null, null, null, 200, 20],
+        ["rice paper", 1, "pcs", 500, 8000, 16, 16, 2]
+      ]
+    };
+
+    var infoBox = document.getElementById("hppSelectedRangeInfo");
+    infoBox.textContent = "Range Di-Select: " + rawHppSelection.sheetName + "!" + rawHppSelection.address + " (10 baris × 8 kolom — Tanpa Header)";
+    infoBox.classList.remove("hidden");
+
+    replaceCheckedRowMap = {};
+    recomputeHppComparison();
+    showAuditStatus("success", "Preview Tabel siap! 2 Warna (Hijau & Merah) diterapkan di 2 kolom terakhir. Klik 1 sel target di Sheet lalu tekan Auto Create.");
+  }
+
+  function handleReadHppSelectedRange() {
+    var btn = document.getElementById("btnReadHppSelection");
+    btn.textContent = "Membaca Range HPP yang Di-Select...";
+    btn.disabled = true;
+
+    if (hasGoogleScriptRun()) {
+      google.script.run
+        .withSuccessHandler(function (res) {
+          btn.textContent = "1. Baca Baris HPP yang Di-Select & Tampilkan Preview";
+          btn.disabled = false;
+          rawHppSelection = res;
+
+          var infoBox = document.getElementById("hppSelectedRangeInfo");
+          infoBox.textContent =
+            "Range Di-Select: " + res.sheetName + "!" + res.address + " (" + res.rowCount + " baris × " + res.columnCount + " kolom)";
+          infoBox.classList.remove("hidden");
+
+          replaceCheckedRowMap = {};
+          recomputeHppComparison();
+          showAuditStatus(
+            "success",
+            "Preview berhasil dibuat (" +
+              hppComparisonRows.length +
+              " baris). Klik sel target di Sheet lalu tekan '⚡ 2. AUTO CREATE TABEL DI SEL YANG DI-SELECT'!"
+          );
+        })
+        .withFailureHandler(function (err) {
+          btn.textContent = "1. Baca Baris HPP yang Di-Select & Tampilkan Preview";
+          btn.disabled = false;
+          showAuditStatus("error", err && err.message ? err.message : String(err));
+        })
+        .readSelectedRangeFromSheet();
+    } else {
+      btn.textContent = "1. Baca Baris HPP yang Di-Select & Tampilkan Preview";
+      btn.disabled = false;
+      loadSample10RowsHpp();
+    }
+  }
+
+  /**
+   * Memproses 1 baris bahan HPP:
+   * - 2 WARNA SAJA: HIJAU (<= HPP) & MERAH (> HPP). Biru dihapus!
+   * - Evaluasi HPP difokuskan di 2 KOLOM TERAKHIR.
+   * - Ringkasan NOTE hanya membandingkan 2 KOLOM TERAKHIR vs HPP.
+   */
+  function buildSingleComparisonRow(rowIndexNumber, rawRow, overrideRefId) {
+    var periodCols = activeTablePeriodCols;
+    var cBahan = rawRow[0] !== null && rawRow[0] !== undefined ? String(rawRow[0]).trim() : "";
+
+    if (!cBahan) {
+      var emptyVals = periodCols.map(function () { return ""; });
+      emptyVals.push("");
+      return {
+        rowNumber: rowIndexNumber,
+        isEmptyRow: true,
+        rawRow: rawRow,
+        bahan: "",
+        overallStatus: "EMPTY",
+        noteColorStatus: "EMPTY",
+        values: emptyVals,
+        cellStatuses: periodCols.map(function () { return "EMPTY"; }),
+        noteText: ""
+      };
+    }
+
+    var gramasi = parseNum(rawRow[1]);
+    var satuan = rawRow[2] !== null && rawRow[2] !== undefined ? String(rawRow[2]).trim() : "";
+    var kemasanHpp = parseNum(rawRow[3]);
+    var hargaKemasanHpp = parseNum(rawRow[4]);
+    var hargaPerGramHpp = parseNum(rawRow[5]);
+    var hargaPakaiHpp = parseNum(rawRow[6]);
+    var process10Hpp = parseNum(rawRow[7]);
+
+    var hppBaseComparePrice =
+      hargaKemasanHpp !== null
+        ? hargaKemasanHpp
+        : hargaPerGramHpp !== null
+        ? hargaPerGramHpp
+        : hargaPakaiHpp;
+
+    var matchedRef = null;
+    var companionSameNameRefs = [];
+
+    if (overrideRefId !== undefined) {
+      matchedRef = normalizedRefItems.find(function (item) { return item.id === overrideRefId; }) || null;
+    } else {
+      var bestScore = 0;
+      for (var i = 0; i < normalizedRefItems.length; i++) {
+        var cand = normalizedRefItems[i];
+        var s = calcIngredientSimilarity(cBahan, cand);
+        if (s < 0.45) continue;
+
+        var augFilledCount = 0;
+        var hasExactHppMatch = false;
+        var priceVals = [];
+
+        periodCols.forEach(function (col) {
+          var pv = cand.priceByCol[col];
+          if (pv && pv > 0) {
+            augFilledCount++;
+            priceVals.push(pv);
+            if (
+              (hargaKemasanHpp !== null && Math.abs(pv - hargaKemasanHpp) < 0.5) ||
+              (hargaPerGramHpp !== null && Math.abs(pv - hargaPerGramHpp) < 0.05)
+            ) {
+              hasExactHppMatch = true;
+            }
+          }
+        });
+
+        if (hasExactHppMatch) s += 0.06;
+        s += Math.min(0.05, augFilledCount * 0.008);
+
+        if (priceVals.length > 0) {
+          var sampleP = priceVals[priceVals.length - 1];
+          var relErrKem = hargaKemasanHpp ? Math.abs(sampleP - hargaKemasanHpp) / Math.max(sampleP, hargaKemasanHpp) : 1;
+          var relErrGr = hargaPerGramHpp ? Math.abs(sampleP - hargaPerGramHpp) / Math.max(sampleP, hargaPerGramHpp) : 1;
+          var bestRelErr = Math.min(relErrKem, relErrGr);
+          s += Math.max(0, (1 - bestRelErr) * 0.03);
+          if (hargaKemasanHpp && relErrKem < 0.45) {
+            s += 0.015;
+          }
+        }
+
+        if (s > bestScore) {
+          bestScore = s;
+          matchedRef = cand;
+        }
+      }
+    }
+
+    if (!matchedRef) {
+      var notFoundNote = "⚪ TIDAK DITEMUKAN";
+      var nfValues = periodCols.map(function () { return "-"; });
+      nfValues.push(notFoundNote);
+
+      return {
+        rowNumber: rowIndexNumber,
+        isEmptyRow: false,
+        rawRow: rawRow,
+        bahan: cBahan,
+        gramasi: gramasi,
+        satuan: satuan,
+        hargaKemasanHpp: hargaKemasanHpp,
+        hargaPerGramHpp: hargaPerGramHpp,
+        hargaPakaiHpp: hargaPakaiHpp,
+        hppComparePrice: hppBaseComparePrice,
+        hppCompareLabel: hargaKemasanHpp !== null ? "Harga/Kemasan" : "Harga",
+        matchedRefId: "",
+        matchedRef: null,
+        overallStatus: "NOT FOUND",
+        noteColorStatus: "EMPTY",
+        values: nfValues,
+        cellStatuses: periodCols.map(function () { return "EMPTY"; }),
+        noteText: notFoundNote
+      };
+    }
+
+    var normTargetName = cleanIngredientName(matchedRef.itemName);
+    companionSameNameRefs = normalizedRefItems.filter(function (it) {
+      return it.id !== matchedRef.id && cleanIngredientName(it.itemName) === normTargetName;
+    });
+
+    var activeHppCompare = hppBaseComparePrice;
+    var activeCompareLabel = hargaKemasanHpp !== null ? "Harga/Kemasan" : (hargaPerGramHpp !== null ? "Harga/gr" : "HARGA");
+    var gUnit = String(matchedRef.gramasiUnit || "").toUpperCase();
+    var allRefPrices = Object.values(matchedRef.priceByCol || {}).filter(function (v) { return v > 0; });
+
+    if (
+      (gUnit === "GR" || gUnit === "GRAM" || gUnit === "ML") &&
+      hargaPerGramHpp !== null &&
+      allRefPrices.length > 0 &&
+      (hargaKemasanHpp === null ||
+        Math.abs(allRefPrices[0] - hargaPerGramHpp) < Math.abs(allRefPrices[0] - hargaKemasanHpp))
+    ) {
+      activeHppCompare = hargaPerGramHpp;
+      activeCompareLabel = "Harga/gr";
+    }
+
+    var rowMonthValues = [];
+    var rowCellStatuses = [];
+    var numPeriods = periodCols.length;
+
+    periodCols.forEach(function (colName, cIdx) {
+      var val = matchedRef.priceByCol[colName];
+
+      if ((!val || val <= 0) && companionSameNameRefs.length > 0) {
+        for (var k = 0; k < companionSameNameRefs.length; k++) {
+          var comp = companionSameNameRefs[k];
+          var compUnit = String(comp.gramasiUnit || "").toUpperCase();
+          var sameScale =
+            compUnit === gUnit ||
+            ((compUnit === "GR" || compUnit === "GRAM") && (gUnit === "GR" || gUnit === "GRAM"));
+          if (sameScale && comp.priceByCol[colName] && comp.priceByCol[colName] > 0) {
+            val = comp.priceByCol[colName];
+            break;
+          }
+        }
+      }
+
+      if (val !== undefined && val !== null && val > 0) {
+        rowMonthValues.push(val);
+        // 2 Warna Saja:
+        // Jika Naik (> HPP) -> "NAIK" (Merah)
+        // Jika Turun atau Sama (<= HPP) -> "SESUAI" (Hijau)
+        var isNaik = activeHppCompare !== null && (val - activeHppCompare) > 0.01;
+        var st = isNaik ? "NAIK" : "SESUAI";
+        rowCellStatuses.push(st);
+      } else {
+        rowMonthValues.push("-");
+        rowCellStatuses.push("EMPTY");
+      }
+    });
+
+    // =========================================================================
+    // RINGKASAN NOTE: HANYA BANDINGKAN DENGAN 2 KOLOM TERAKHIR SAJA!
+    // =========================================================================
+    var finalNote = "";
+    var noteColorStatus = "EMPTY";
+
+    // Ambil 2 nilai periode terakhir dari tabel
+    var idx1 = numPeriods - 2;
+    var idx2 = numPeriods - 1;
+    var val1 = idx1 >= 0 ? rowMonthValues[idx1] : null;
+    var val2 = idx2 >= 0 ? rowMonthValues[idx2] : null;
+
+    var num1 = typeof val1 === "number" ? val1 : null;
+    var num2 = typeof val2 === "number" ? val2 : null;
+
+    if (num1 === null && num2 === null) {
+      // Jika di 2 kolom terakhir kosong, cari harga terakhir yang tersedia di bulan sebelumnya
+      var availablePrices = rowMonthValues.filter(function (v) { return typeof v === "number" && v > 0; });
+      if (availablePrices.length > 0) {
+        var lastP = availablePrices[availablePrices.length - 1];
+        if (activeHppCompare !== null && lastP > activeHppCompare) {
+          finalNote = "🔺 NAIK (Hrg Terakhir: +" + formatIDR(lastP - activeHppCompare, true) + " vs HPP)";
+          noteColorStatus = "NAIK";
+        } else {
+          finalNote = "🟢 AMAN (<= HPP)";
+          noteColorStatus = "SESUAI";
+        }
+      } else {
+        finalNote = "⚪ 2 Kolom Terakhir Kosong";
+        noteColorStatus = "EMPTY";
+      }
+    } else {
+      var diff1 = num1 !== null && activeHppCompare !== null ? num1 - activeHppCompare : null;
+      var diff2 = num2 !== null && activeHppCompare !== null ? num2 - activeHppCompare : null;
+
+      var isNaik1 = diff1 !== null && diff1 > 0.01;
+      var isNaik2 = diff2 !== null && diff2 > 0.01;
+
+      if (isNaik1 || isNaik2) {
+        // NAIK (> HPP) -> WARNA MERAH!
+        noteColorStatus = "NAIK";
+        if (isNaik1 && isNaik2) {
+          finalNote = "🔺 NAIK (Upd: +" + formatIDR(diff1, true) + ", Ctr: +" + formatIDR(diff2, true) + ")";
+        } else if (isNaik2) {
+          finalNote = "🔺 NAIK (Ctr: +" + formatIDR(diff2, true) + " vs HPP)";
+        } else {
+          finalNote = "🔺 NAIK (Upd: +" + formatIDR(diff1, true) + " vs HPP)";
+        }
+      } else {
+        // TURUN / SESUAI (<= HPP) -> WARNA HIJAU!
+        noteColorStatus = "SESUAI";
+        var isExact1 = diff1 !== null && Math.abs(diff1) < 0.01;
+        var isExact2 = diff2 !== null && Math.abs(diff2) < 0.01;
+        if (isExact1 || isExact2) {
+          finalNote = "🟢 SESUAI HPP";
+        } else {
+          finalNote = "🟢 AMAN (<= HPP)";
+        }
+      }
+    }
+
+    var allRowValues = rowMonthValues.concat([finalNote]);
+
+    return {
+      rowNumber: rowIndexNumber,
+      isEmptyRow: false,
+      rawRow: rawRow,
+      bahan: cBahan,
+      gramasi: gramasi,
+      satuan: satuan,
+      hargaKemasanHpp: hargaKemasanHpp,
+      hargaPerGramHpp: hargaPerGramHpp,
+      hargaPakaiHpp: hargaPakaiHpp,
+      hppComparePrice: activeHppCompare,
+      hppCompareLabel: activeCompareLabel,
+      matchedRefId: matchedRef.id,
+      matchedRef: matchedRef,
+      overallStatus: noteColorStatus === "NAIK" ? "NAIK" : "SESUAI",
+      noteColorStatus: noteColorStatus,
+      values: allRowValues,
+      cellStatuses: rowCellStatuses,
+      noteText: finalNote
+    };
+  }
+
+  function recomputeHppComparison() {
+    if (!rawHppSelection || !Array.isArray(rawHppSelection.values)) return;
+
+    activeTablePeriodCols = getActiveTablePeriodColumns();
+
+    var rows = rawHppSelection.values;
+    var noHeaderChecked = document.getElementById("chkNoHeaderHpp").checked;
+
+    var startIdx = 0;
+    if (!noHeaderChecked && rows.length > 0) {
+      startIdx = 1;
+    } else if (rows.length > 0 && isLikelyHeaderRow(rows[0])) {
+      startIdx = 1;
+    }
+
+    var dataSlice = rows.slice(startIdx);
+    hppComparisonRows = dataSlice.map(function (r, idx) {
+      var prevRow = hppComparisonRows[idx];
+      var overrideId = prevRow && prevRow.hasManualOverride ? prevRow.matchedRefId : undefined;
+      var built = buildSingleComparisonRow(idx + 1, r, overrideId);
+      if (prevRow && prevRow.hasManualOverride) {
+        built.hasManualOverride = true;
+      }
+      return built;
+    });
+
+    document.getElementById("tableOutputSection").classList.remove("hidden");
+    renderTablePreviewUI();
+  }
+
+  function handleManualRefChange(rowIdx, newRefId) {
+    var target = hppComparisonRows[rowIdx];
+    if (!target || target.isEmptyRow) return;
+    var updated = buildSingleComparisonRow(target.rowNumber, target.rawRow, newRefId);
+    updated.hasManualOverride = true;
+    hppComparisonRows[rowIdx] = updated;
+    renderTablePreviewUI();
+  }
+
+  function renderTablePreviewUI() {
+    var sesuai = 0, berbeda = 0, notFound = 0;
+    hppComparisonRows.forEach(function (r) {
+      if (r.isEmptyRow) return;
+      if (r.noteColorStatus === "SESUAI") sesuai++;
+      else if (r.noteColorStatus === "NAIK") berbeda++;
+      else notFound++;
+    });
+
+    var totalTableCols = activeTablePeriodCols.length + 1;
+    document.getElementById("tableRowCountBadge").textContent = hppComparisonRows.length + " Baris";
+    document.getElementById("colDimensionBadge").textContent =
+      hppComparisonRows.length + " Baris × " + totalTableCols + " Kolom (" + activeTablePeriodCols.length + " Bulan + 1 Note)";
+
+    document.getElementById("statSesuai").textContent = sesuai;
+    document.getElementById("statBerbeda").textContent = berbeda;
+    document.getElementById("statNotFound").textContent = notFound;
+
+    var numPeriodCols = activeTablePeriodCols.length;
+
+    // 1. Render Header Tabel
+    var theadEl = document.getElementById("previewTableHead");
+    var headHtml =
+      "<tr>" +
+      '<th class="px-2 py-1.5 text-left border-r border-slate-700 whitespace-nowrap"># Bahan HPP</th>' +
+      activeTablePeriodCols
+        .map(function (col, idx) {
+          var meta = parsePeriodColumnMeta(col);
+          var isLastTwo = (idx >= numPeriodCols - 2);
+          var bg = isLastTwo
+            ? (meta.type === "PL CENTRAL" ? "bg-indigo-900 ring-1 ring-emerald-400" : "bg-emerald-800 ring-1 ring-emerald-400")
+            : (meta.type === "PL CENTRAL" ? "bg-indigo-950 text-slate-300" : "bg-emerald-950 text-slate-300");
+          return (
+            '<th class="px-2 py-1.5 text-right border-r border-slate-700 whitespace-nowrap ' +
+            bg +
+            '" title="' +
+            escapeHtml(col) +
+            '">' +
+            escapeHtml(meta.shortLabel) +
+            (isLastTwo ? ' <span class="text-[8px] font-normal text-emerald-300">★</span>' : "") +
+            "</th>"
+          );
+        })
+        .join("") +
+      '<th class="px-2 py-1.5 text-left bg-slate-900 whitespace-nowrap">NOTE (2 Kolom Terakhir)</th>' +
+      "</tr>";
+    theadEl.innerHTML = headHtml;
+
+    // 2. Render Body Tabel (2 Warna Saja)
+    var tbodyEl = document.getElementById("previewTableBody");
+    var bodyHtml = hppComparisonRows
+      .map(function (r) {
+        if (r.isEmptyRow) {
+          return (
+            '<tr class="text-slate-400 bg-slate-50">' +
+            '<td class="px-2 py-1 border-r border-slate-200">' + r.rowNumber + ". (Kosong)</td>" +
+            activeTablePeriodCols.map(function () { return '<td class="px-2 py-1 text-center border-r border-slate-100">-</td>'; }).join("") +
+            '<td class="px-2 py-1"></td>' +
+            "</tr>"
+          );
+        }
+
+        var monthCellsHtml = activeTablePeriodCols
+          .map(function (_, cIdx) {
+            var val = r.values[cIdx];
+            var st = r.cellStatuses[cIdx];
+            var isLastTwo = (cIdx >= numPeriodCols - 2);
+
+            if (typeof val === "number" && val > 0) {
+              var cellCls = "text-slate-800";
+              if (isLastTwo) {
+                // 2 Warna Saja di 2 Kolom Terakhir
+                cellCls = st === "NAIK"
+                  ? "bg-red-100 text-red-900 font-bold border-red-200"
+                  : "bg-green-100 text-green-900 font-bold border-green-200";
+              }
+              return (
+                '<td class="px-2 py-1 text-right font-mono border-r border-slate-100 whitespace-nowrap ' +
+                cellCls +
+                '">' +
+                formatIDR(val, true) +
+                "</td>"
+              );
+            }
+            return '<td class="px-2 py-1 text-center text-slate-300 border-r border-slate-100">-</td>';
+          })
+          .join("");
+
+        var noteBg =
+          r.noteColorStatus === "NAIK"
+            ? "bg-red-100 text-red-900 font-bold"
+            : r.noteColorStatus === "SESUAI"
+            ? "bg-green-100 text-green-900 font-bold"
+            : "bg-slate-50 text-slate-500";
+
+        return (
+          '<tr class="hover:bg-slate-50">' +
+          '<td class="px-2 py-1.5 font-semibold text-slate-800 border-r border-slate-200 whitespace-nowrap">' +
+          '<span class="text-slate-400 font-mono mr-1">#' + r.rowNumber + "</span>" +
+          escapeHtml(r.bahan) +
+          '<div class="text-[9px] font-normal text-slate-500">HPP: Rp ' +
+          formatIDR(r.hppComparePrice, true) +
+          "</div>" +
+          "</td>" +
+          monthCellsHtml +
+          '<td class="px-2 py-1.5 text-[10px] whitespace-nowrap ' +
+          noteBg +
+          '">' +
+          escapeHtml(r.noteText) +
+          "</td>" +
+          "</tr>"
+        );
+      })
+      .join("");
+    tbodyEl.innerHTML = bodyHtml;
+
+    // 3. Render Kartu Detail Per Baris
+    var cardsEl = document.getElementById("rowsDetailCardsList");
+    cardsEl.innerHTML = hppComparisonRows
+      .map(function (row, idx) {
+        if (row.isEmptyRow) return "";
+
+        var badgeClass =
+          row.noteColorStatus === "NAIK"
+            ? "bg-red-100 text-red-800 border-red-200"
+            : row.noteColorStatus === "SESUAI"
+            ? "bg-green-100 text-green-800 border-green-200"
+            : "bg-slate-100 text-slate-600 border-slate-200";
+
+        var opts = '<option value="">-- Tidak Ditemukan / Kosongkan --</option>';
+        normalizedRefItems.forEach(function (ref) {
+          var sel = row.matchedRefId === ref.id ? "selected" : "";
+          opts +=
+            '<option value="' +
+            escapeHtml(ref.id) +
+            '" ' +
+            sel +
+            ">[" +
+            escapeHtml(ref.kategori) +
+            "] " +
+            escapeHtml(ref.itemName) +
+            " (" +
+            escapeHtml(ref.gramasiUnit) +
+            ")</option>";
+        });
+
+        return (
+          '<div class="bg-white border border-slate-200 rounded p-2 space-y-1.5 shadow-sm">' +
+          '<div class="flex items-center justify-between gap-2">' +
+          '<div class="truncate">' +
+          '<span class="text-[10px] font-mono font-bold text-slate-400">#' + row.rowNumber + "</span> " +
+          '<span class="text-xs font-bold text-slate-800">' + escapeHtml(row.bahan) + "</span> " +
+          '<span class="text-[10px] text-slate-500">(HPP: Rp ' + formatIDR(row.hppComparePrice, true) + ")</span>" +
+          "</div>" +
+          '<span class="px-1.5 py-0.5 rounded text-[9px] font-bold border shrink-0 ' + badgeClass + '">' + escapeHtml(row.noteText) + "</span>" +
+          "</div>" +
+          '<select onchange="handleManualRefChange(' +
+          idx +
+          ', this.value)" class="w-full text-[11px] border border-slate-200 rounded px-2 py-1 bg-slate-50 text-slate-700">' +
+          opts +
+          "</select>" +
+          "</div>"
+        );
+      })
+      .join("");
+  }
+
+  function handleAutoCreateTable() {
+    if (hppComparisonRows.length === 0) return;
+
+    var headerModeEl = document.getElementById("selectHeaderMode");
+    var headerMode = headerModeEl ? headerModeEl.value : "auto";
+
+    var btn = document.getElementById("btnAutoCreateSingle");
+    var originalLabel = btn.textContent;
+    btn.textContent = "Sedang Membuat Tabel di Sheet...";
+    btn.disabled = true;
+
+    var headers = activeTablePeriodCols.concat(["NOTE"]);
+
+    var payload = {
+      headers: headers,
+      headerMode: headerMode,
+      sourceMeta: rawHppSelection
+        ? {
+            sheetName: rawHppSelection.sheetName,
+            startRow: rawHppSelection.startRow,
+            startCol: rawHppSelection.startCol,
+            rowCount: rawHppSelection.rowCount,
+            columnCount: rawHppSelection.columnCount
+          }
+        : null,
+      rows: hppComparisonRows.map(function (r) {
+        return {
+          rowNumber: r.rowNumber,
+          isEmptyRow: r.isEmptyRow,
+          overallStatus: r.overallStatus,
+          noteColorStatus: r.noteColorStatus,
+          values: r.values,
+          cellStatuses: r.cellStatuses
+        };
+      })
+    };
+
+    if (!hasGoogleScriptRun()) {
+      btn.textContent = originalLabel;
+      btn.disabled = false;
+      showAuditStatus(
+        "success",
+        "Simulasi Berhasil! " +
+          hppComparisonRows.length +
+          " baris × " +
+          headers.length +
+          " kolom (2 warna di 2 kolom terakhir + Note)."
+      );
+      return;
+    }
+
+    google.script.run
+      .withSuccessHandler(function (res) {
+        btn.textContent = originalLabel;
+        btn.disabled = false;
+        var headerInfo = res.headerCreated
+          ? "lengkap dengan Header Bulan (baris " + res.headerRow + ")"
+          : "tanpa ulang Header (otomatis lanjut di baris " + res.dataStartRow + ")";
+        showAuditStatus(
+          "success",
+          "⚡ AUTO CREATE BERHASIL di " +
+            res.sheetName +
+            "!" +
+            res.rangeAddress +
+            " (" +
+            res.rowCount +
+            " baris bahan × " +
+            res.colCount +
+            " kolom, " +
+            headerInfo +
+            ")!"
+        );
+      })
+      .withFailureHandler(function (err) {
+        btn.textContent = originalLabel;
+        btn.disabled = false;
+        showAuditStatus("error", err && err.message ? err.message : String(err));
+      })
+      .writeComparisonTableToSheet(payload);
+  }
+</script>

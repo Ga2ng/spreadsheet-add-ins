@@ -1,0 +1,17 @@
+{
+  "name": "audit-data-tools-gas",
+  "version": "2.1.0",
+  "private": true,
+  "description": "Audit Data Tools - Google Spreadsheet Sidebar Add-on (Auto-Merge Kitchen & Storage)",
+  "scripts": {
+    "convert": "node scripts/convert-json.js",
+    "sync": "node scripts/convert-json.js",
+    "login": "npx @google/clasp login",
+    "login:beda-gmail": "npx @google/clasp login --no-localhost",
+    "logout": "npx @google/clasp logout",
+    "status": "node scripts/convert-json.js && npx @google/clasp status",
+    "push": "node scripts/convert-json.js && npx @google/clasp push -f",
+    "open": "npx @google/clasp open"
+  }
+}
+

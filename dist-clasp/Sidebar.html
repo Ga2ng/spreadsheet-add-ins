@@ -1,0 +1,196 @@
+<!--
+===============================================================================
+FOLDER 03 — MAIN SIDEBAR (Sidebar.html)
+===============================================================================
+File ini adalah kerangka utama Sidebar.
+Menu fitur dipecah modular ke dalam file HTML terpisah:
+1. PembandingView.html : Menu 02 Pembanding HPP (2 Warna & Auto Create)
+2. ParserView.html     : Menu 01 Parser Range Sheet ke JSON
+===============================================================================
+-->
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Audit Data Tools</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #f1f5f9; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+  </style>
+</head>
+<body class="bg-slate-100 text-slate-900 antialiased min-h-screen flex flex-col text-xs">
+
+  <!-- HEADER + SELECT MENU SWITCHER -->
+  <header class="bg-emerald-700 text-white px-3.5 py-3 shadow-sm border-b border-emerald-800 space-y-2.5">
+    <div class="flex items-center justify-between gap-2">
+      <div>
+        <h1 class="text-sm font-bold tracking-wide uppercase">Audit Data Tools</h1>
+        <p id="headerSubtitle" class="text-[11px] text-emerald-100">
+          2 Warna (Hijau &amp; Merah) di 2 Kolom Terakhir + Kolom Note
+        </p>
+      </div>
+      <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-800 text-emerald-100 border border-emerald-600">
+        Modular
+      </span>
+    </div>
+
+    <div>
+      <label for="featureSelect" class="block text-[10px] font-semibold uppercase tracking-wider text-emerald-200 mb-1">
+        Pilih Menu Fitur:
+      </label>
+      <select
+        id="featureSelect"
+        onchange="switchFeatureMode(this.value)"
+        class="w-full text-xs font-semibold bg-emerald-900 text-white border border-emerald-500 rounded-md px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-white cursor-pointer"
+      >
+        <option value="hpp-audit" selected>02. Pembanding HPP (2 Warna &amp; Auto Create Tabel)</option>
+        <option value="replace-hpp">03. Replace Harga HPP (Preview &amp; Apply ke Sheet)</option>
+        <option value="parser">01. Parser (Sheet Range → JSON)</option>
+      </select>
+    </div>
+  </header>
+
+  <!-- SHARED CLIENT UTILITIES (Dimuat sebelum view modular agar siap digunakan) -->
+  <script>
+    function hasGoogleScriptRun() {
+      return typeof google !== "undefined" && google.script && google.script.run;
+    }
+
+    function switchFeatureMode(mode) {
+      var viewParser = document.getElementById("viewParser");
+      var viewHpp = document.getElementById("viewHppAudit");
+      var viewReplace = document.getElementById("viewReplaceHpp");
+      var subtitle = document.getElementById("headerSubtitle");
+
+      if (viewParser) viewParser.classList.add("hidden");
+      if (viewHpp) viewHpp.classList.add("hidden");
+      if (viewReplace) viewReplace.classList.add("hidden");
+
+      if (mode === "parser") {
+        if (viewParser) viewParser.classList.remove("hidden");
+        if (subtitle) subtitle.textContent = "Mode: 01. Parser (Sheet Range → JSON)";
+      } else if (mode === "replace-hpp") {
+        if (viewReplace) viewReplace.classList.remove("hidden");
+        if (subtitle) subtitle.textContent = "Mode: 03. Replace Harga HPP (Preview & Apply ke Sheet)";
+        if (typeof initReplaceHppView === "function") {
+          initReplaceHppView();
+        }
+      } else {
+        if (viewHpp) viewHpp.classList.remove("hidden");
+        if (subtitle) subtitle.textContent = "2 Warna (Hijau & Merah) di 2 Kolom Terakhir + Kolom Note";
+      }
+    }
+
+    function normalizeKey(txt) {
+      return String(txt || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+    }
+
+    function parseNum(val) {
+      if (val === null || val === undefined || val === "") return null;
+      if (typeof val === "number" && !isNaN(val)) return val;
+      var s = String(val).trim();
+      if (!s) return null;
+      var cleaned = s
+        .replace(/[Rp\s]/gi, "")
+        .replace(/\.(?=\d{3}(\D|$))/g, "")
+        .replace(",", ".");
+      var n = Number(cleaned);
+      return isFinite(n) ? n : null;
+    }
+
+    function formatIDR(val, allowDecimals) {
+      if (val === null || val === undefined || isNaN(val)) return "-";
+      if (allowDecimals && Math.abs(val - Math.round(val)) > 0.005) {
+        return new Intl.NumberFormat("id-ID", { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(val);
+      }
+      return new Intl.NumberFormat("id-ID").format(Math.round(val));
+    }
+
+    function formatSignedIDR(val, allowDecimals) {
+      if (val === null || val === undefined || isNaN(val)) return "-";
+      if (allowDecimals && Math.abs(val - Math.round(val)) > 0.005) {
+        if (Math.abs(val) < 0.005) return "0";
+        return (val > 0 ? "+" : "") + new Intl.NumberFormat("id-ID", { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(val);
+      }
+      var r = Math.round(val);
+      if (r === 0) return "0";
+      return (r > 0 ? "+" : "") + new Intl.NumberFormat("id-ID").format(r);
+    }
+
+    function escapeHtml(str) {
+      return String(str || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    function colNumberToLetter(colNum) {
+      var temp = Number(colNum);
+      var letter = "";
+      while (temp > 0) {
+        var mod = (temp - 1) % 26;
+        letter = String.fromCharCode(65 + mod) + letter;
+        temp = Math.floor((temp - 1) / 26);
+      }
+      return letter || "A";
+    }
+
+    function showAuditStatus(type, text) {
+      var box = document.getElementById("auditStatusBox");
+      if (!box) return;
+
+      if (!text) {
+        box.className = "hidden";
+        box.textContent = "";
+        return;
+      }
+
+      var cls = "rounded-md p-2.5 text-xs border ";
+      if (type === "success") {
+        cls += "bg-emerald-50 border-emerald-300 text-emerald-800";
+      } else if (type === "error") {
+        cls += "bg-rose-50 border-rose-300 text-rose-800";
+      } else {
+        cls += "bg-sky-50 border-sky-300 text-sky-800";
+      }
+
+      box.className = cls;
+      box.textContent = text;
+    }
+  </script>
+
+  <!-- MAIN CONTAINER (INCLUDES PER MENU) -->
+  <main class="flex-1 p-3 space-y-3 max-w-md mx-auto w-full">
+
+    <!-- Alert Status Bersama -->
+    <div id="auditStatusBox" class="hidden rounded-md p-2.5 text-xs border"></div>
+
+    <!-- MENU 02: PEMBANDING HPP (VIEW TERPISAH) -->
+    <?!= include('PembandingView'); ?>
+
+    <!-- MENU 03: REPLACE HARGA HPP (VIEW TERPISAH) -->
+    <?!= include('ReplaceHppView'); ?>
+
+    <!-- MENU 01: PARSER SHEET RANGE -> JSON (VIEW TERPISAH) -->
+    <?!= include('ParserView'); ?>
+
+  </main>
+
+  <footer class="py-2 px-3 text-center text-[11px] text-slate-400 border-t border-slate-200 bg-white">
+    Audit Data Tools • Modular Edition (01. Parser • 02. Pembanding • 03. Replace)
+  </footer>
+
+  <script>
+    window.addEventListener("DOMContentLoaded", function () {
+      if (typeof initReferenceJsonPresets === "function") {
+        initReferenceJsonPresets();
+      }
+    });
+  </script>
+</body>
+</html>
