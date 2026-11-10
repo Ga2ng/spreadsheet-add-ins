@@ -1,0 +1,858 @@
+<!--
+===============================================================================
+MENU 04: SCANNER SHEET VIEW (ScannerView.html)
+===============================================================================
+Fitur:
+1. Membaca langsung tabel sheet "CENTRAL STORAGE" dan "CENTRAL KITCHEN" dari spreadsheet aktif.
+2. Otomatis menampilkan View Table isi data bahan, gramasi, dan harga terbaru.
+3. Tombol Utama 1-Klik:
+   "⚡ UPDATE DATA PEMBANDING (AUTO UPDATE JSON & .GS)"
+   - Mengupdate data pembanding di Spreadsheet (DocumentProperties & Memory).
+   - Menu 02 & Menu 03 otomatis langsung aktif memakai data pembanding terbaru!
+   - Meng-generate file DataPembanding.gs, central-kitchen.json, dan central-storage.json.
+   - Menyediakan 1-klik download / auto-save file ke folder proyek.
+===============================================================================
+-->
+<div id="viewScanner" class="hidden space-y-3">
+
+  <!-- STEP 1: TOMBOL PEMINDAIAN SHEET LANGSUNG -->
+  <section class="bg-white rounded-lg border border-slate-200 p-3.5 shadow-sm space-y-2.5">
+    <div class="flex items-start justify-between gap-2">
+      <div>
+        <h2 class="text-xs font-bold uppercase tracking-wider text-emerald-800">
+          Scanner Sheet Live (Direct Reader)
+        </h2>
+        <p class="text-[11px] text-slate-500 mt-0.5">
+          Membaca langsung dari sheet <code class="font-bold text-emerald-700">CENTRAL STORAGE</code> dan <code class="font-bold text-emerald-700">CENTRAL KITCHEN</code> di spreadsheet ini.
+        </p>
+      </div>
+      <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 shrink-0">
+        Live Scan
+      </span>
+    </div>
+
+    <div class="bg-slate-50 border border-slate-200 rounded-md p-2.5 text-[11px] text-slate-600 space-y-1">
+      <div class="font-bold text-slate-700">Anti Ribet (Tanpa Download &amp; Convert Manual):</div>
+      <p class="text-[10px] text-slate-500 leading-relaxed">
+        Jika ada update harga atau bahan baru di sheet Central Kitchen / Storage, klik tombol di bawah untuk scanning tabel lalu tekan tombol <strong>Update Data Pembanding</strong>. Data pembanding (JSON &amp; .gs) otomatis terupdate!
+      </p>
+    </div>
+
+    <button
+      id="btnRunLiveSheetScan"
+      type="button"
+      onclick="handleRunLiveSheetScan()"
+      class="w-full py-2.5 px-3 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-xs font-bold rounded-md shadow transition-colors flex items-center justify-center gap-1.5"
+    >
+      <span>🔍 1. SCAN SHEET CENTRAL KITCHEN &amp; STORAGE SEKARANG</span>
+    </button>
+  </section>
+
+  <!-- STEP 2: HASIL SCAN & TOMBOL EKSEKUSI AUTO UPDATE -->
+  <section id="scannerOutputSection" class="hidden bg-white rounded-lg border border-slate-200 p-3.5 shadow-sm space-y-3">
+    <div class="flex items-center justify-between">
+      <div>
+        <h2 class="text-xs font-bold uppercase tracking-wider text-emerald-800">Ringkasan Hasil Scan</h2>
+        <p id="scannerTimestampText" class="text-[10px] text-slate-400">Terakhir discan: -</p>
+      </div>
+      <span id="scannerTotalItemBadge" class="text-[11px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+        0 Item
+      </span>
+    </div>
+
+    <!-- STATS KPI CARDS -->
+    <div class="grid grid-cols-3 gap-1.5 text-center text-[10px]">
+      <div class="bg-emerald-50 border border-emerald-200 rounded p-1.5">
+        <div id="statScanTotalItems" class="text-xs font-bold text-emerald-800">0</div>
+        <div class="text-emerald-700 font-medium">Total Item</div>
+      </div>
+      <div class="bg-sky-50 border border-sky-200 rounded p-1.5">
+        <div id="statScanTotalPeriods" class="text-xs font-bold text-sky-800">0</div>
+        <div class="text-sky-700 font-medium">Kolom Periode</div>
+      </div>
+      <div class="bg-indigo-50 border border-indigo-200 rounded p-1.5">
+        <div id="statScanLatestPeriod" class="text-[10px] font-bold text-indigo-800 truncate" title="-">-</div>
+        <div class="text-indigo-700 font-medium">Periode Terbaru</div>
+      </div>
+    </div>
+
+    <!-- RINCIAN STATUS PER SHEET -->
+    <div id="scannerSheetsList" class="space-y-1.5"></div>
+
+    <!-- TOMBOL UTAMA: AUTO UPDATE DATA PEMBANDING (JSON & .GS) -->
+    <div class="bg-slate-900 text-white rounded-lg p-3 space-y-2.5 shadow-md border border-slate-800">
+      <div class="text-[11px] text-emerald-300 leading-relaxed font-semibold">
+        Klik tombol di bawah untuk mengupdate data pembanding secara otomatis (JSON &amp; .gs langsung sinkron):
+      </div>
+
+      <button
+        id="btnAutoUpdateDataPembanding"
+        type="button"
+        onclick="handleAutoUpdateDataPembanding()"
+        class="w-full py-3 px-3 bg-emerald-400 hover:bg-emerald-300 active:bg-emerald-500 text-slate-950 text-xs font-black rounded-md shadow transition-transform uppercase tracking-wider flex items-center justify-center gap-1.5"
+      >
+        <span>⚡ 2. UPDATE DATA PEMBANDING (AUTO UPDATE JSON &amp; .GS)</span>
+      </button>
+
+      <!-- NOTIFIKASI BERHASIL UPDATE & SHORTCUT JUMP -->
+      <div id="scannerAppliedNotice" class="hidden text-[10px] bg-emerald-950 text-emerald-200 p-2.5 rounded border border-emerald-500 space-y-1.5">
+        <div class="font-bold text-emerald-300 flex items-center gap-1.5 text-[11px]">
+          <span>✓ DATA PEMBANDING BERHASIL DI-UPDATE SECARA OTOMATIS!</span>
+        </div>
+        <p class="text-[10px] text-emerald-200 leading-relaxed">
+          Data pembanding in-memory &amp; spreadsheet sekarang menggunakan data live sheet terbaru. Menu 02 (Pembanding HPP) dan Menu 03 (Replace HPP) siap digunakan.
+        </p>
+        <div class="flex items-center gap-2 pt-1 border-t border-emerald-800/80">
+          <button type="button" onclick="switchFeatureMode('hpp-audit')" class="text-emerald-300 hover:text-white underline font-bold">
+            ➔ Buka Menu 02 (Pembanding HPP)
+          </button>
+          <span class="text-emerald-600">•</span>
+          <button type="button" onclick="switchFeatureMode('replace-hpp')" class="text-emerald-300 hover:text-white underline font-bold">
+            ➔ Buka Menu 03 (Replace Harga)
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 3: VIEW TABEL HASIL SCAN (DENGAN SEARCH) -->
+    <div class="space-y-2 pt-2 border-t border-slate-200">
+      <div class="flex items-center justify-between">
+        <span class="text-xs font-bold text-slate-700">View Table Hasil Scan Bahan:</span>
+        <span id="scannerFilterCountText" class="text-[10px] text-slate-400">0 dari 0 ditampilkan</span>
+      </div>
+
+      <div class="flex gap-1.5">
+        <input
+          id="scannerSearchInput"
+          type="text"
+          placeholder="Cari nama bahan (misal: paha, jahe, abon, knorr)..."
+          oninput="handleScannerFilterChange()"
+          class="flex-1 text-xs border border-slate-300 rounded px-2.5 py-1.5 bg-white text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+        />
+        <select
+          id="scannerSheetFilterSelect"
+          onchange="handleScannerFilterChange()"
+          class="text-xs border border-slate-300 rounded px-2 py-1.5 bg-white text-slate-700 font-semibold focus:outline-none focus:ring-1 focus:ring-emerald-500"
+        >
+          <option value="ALL">Semua Sheet</option>
+          <option value="CENTRAL KITCHEN">Kitchen Saja</option>
+          <option value="CENTRAL STORAGE">Storage Saja</option>
+        </select>
+      </div>
+
+      <!-- Tabel Item -->
+      <div class="border border-slate-200 rounded-md overflow-x-auto max-h-64">
+        <table class="w-full text-[10px] border-collapse">
+          <thead class="bg-slate-800 text-white sticky top-0 z-10">
+            <tr>
+              <th class="px-2 py-1.5 text-center w-8">#</th>
+              <th class="px-2 py-1.5 text-left whitespace-nowrap">Nama Item</th>
+              <th class="px-2 py-1.5 text-center whitespace-nowrap">Sheet</th>
+              <th class="px-2 py-1.5 text-center whitespace-nowrap">Satuan</th>
+              <th class="px-2 py-1.5 text-right whitespace-nowrap">Harga Terbaru</th>
+            </tr>
+          </thead>
+          <tbody id="scannerItemsTbody" class="divide-y divide-slate-200 bg-white"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- STEP 4: PANEL FILE HASIL AUTO UPDATE (DOWNLOAD & DIRECT SAVE) -->
+    <details id="scannerFilesPanel" class="border border-slate-200 rounded-md bg-slate-50 p-2.5 text-[11px]">
+      <summary class="cursor-pointer font-bold text-slate-700 select-none flex items-center justify-between">
+        <span>File Hasil Update (DataPembanding.gs &amp; JSON)</span>
+        <span class="text-[10px] text-emerald-700 font-normal">Klik untuk buka ▾</span>
+      </summary>
+
+      <div class="mt-2.5 space-y-2.5">
+        <p class="text-[10px] text-slate-500 leading-relaxed">
+          File di bawah ini sudah otomatis di-generate. Anda dapat mengunduh atau menyalinnya langsung jika ingin memperbarui file lokal di folder proyek.
+        </p>
+
+        <div class="bg-amber-50 border border-amber-200 rounded p-2 text-[10px] text-amber-900 flex items-start gap-1.5 leading-relaxed">
+          <span class="text-xs">📂</span>
+          <div>
+            <strong>Auto History Backup:</strong> Setiap kali update ditekan, file versi sebelumnya otomatis di-copy ke folder <code>02-data-pembanding/history/</code> dengan format nama <code>_YYYYMMDD-HHmmss</code> (misal: <code>DataPembanding_20261110-083500.gs</code>). Anda bebas mengecek riwayat atau menghapusnya secara manual dari folder tersebut kapan saja.
+          </div>
+        </div>
+
+        <!-- Tombol Download & Simpan -->
+        <div class="flex gap-1.5">
+          <button
+            type="button"
+            onclick="handleDownloadAllUpdatedFiles()"
+            class="flex-1 py-1.5 px-2.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold rounded text-[11px] shadow-sm flex items-center justify-center gap-1"
+          >
+            <span>📥 Download 3 File (.gs &amp; 2 .json)</span>
+          </button>
+          <button
+            id="btnDirectSaveDir"
+            type="button"
+            onclick="handleDirectSaveToWorkspaceFolder()"
+            class="py-1.5 px-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded text-[11px] shadow-sm flex items-center justify-center gap-1"
+            title="Simpan langsung ke folder proyek c:\DEV\addons-spreadsheet"
+          >
+            <span>📁 Simpan ke Folder Proyek</span>
+          </button>
+        </div>
+
+        <!-- Tab Pemilih File yang Di-generate -->
+        <div class="space-y-1.5 pt-1">
+          <div class="flex items-center gap-1 border-b border-slate-200 pb-1 text-[10px]">
+            <button
+              type="button"
+              onclick="switchGeneratedFileTab('gs')"
+              id="tabBtnGs"
+              class="px-2 py-1 rounded font-bold bg-slate-800 text-white"
+            >
+              DataPembanding.gs
+            </button>
+            <button
+              type="button"
+              onclick="switchGeneratedFileTab('kitchen')"
+              id="tabBtnKitchen"
+              class="px-2 py-1 rounded font-semibold bg-slate-200 text-slate-700 hover:bg-slate-300"
+            >
+              central-kitchen.json
+            </button>
+            <button
+              type="button"
+              onclick="switchGeneratedFileTab('storage')"
+              id="tabBtnStorage"
+              class="px-2 py-1 rounded font-semibold bg-slate-200 text-slate-700 hover:bg-slate-300"
+            >
+              central-storage.json
+            </button>
+          </div>
+
+          <div class="flex items-center justify-between text-[10px]">
+            <span id="genFileLabel" class="font-mono text-slate-600 font-semibold">DataPembanding.gs (Apps Script)</span>
+            <button
+              type="button"
+              onclick="handleCopyActiveGeneratedFile()"
+              class="text-emerald-700 hover:underline font-bold"
+            >
+              📋 Copy Isi File Ini
+            </button>
+          </div>
+
+          <pre id="genFilePreViewer" class="bg-slate-900 text-emerald-300 text-[10px] font-mono p-2.5 rounded max-h-48 overflow-auto border border-slate-800 leading-relaxed"></pre>
+        </div>
+
+        <div class="pt-1 border-t border-slate-200 flex justify-between items-center text-[10px]">
+          <button
+            type="button"
+            onclick="handleResetToBuiltinPresets()"
+            class="text-rose-600 hover:underline font-semibold"
+          >
+            🔄 Reset ke Data Bawaan DataPembanding.gs Asli
+          </button>
+        </div>
+      </div>
+    </details>
+  </section>
+
+</div>
+
+<script>
+  // State Khusus Menu 04 (Scanner Sheet Live)
+  var lastLiveScanResult = null;
+  var lastLiveUpdatePackage = null;
+  var allScannedItemsFlat = [];
+  var currentActiveGenTab = "gs"; // 'gs' | 'kitchen' | 'storage'
+
+  function initScannerView() {
+    // Jalankan scan otomatis saat menu dibuka jika belum pernah scan di sesi ini
+    if (!lastLiveScanResult) {
+      handleRunLiveSheetScan(true); // true = silent initial scan
+    }
+  }
+
+  function handleRunLiveSheetScan(isSilent) {
+    var btn = document.getElementById("btnRunLiveSheetScan");
+    var origText = btn ? btn.innerHTML : "";
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = '<span>⏳ MEMINDAI SHEET CENTRAL KITCHEN &amp; STORAGE...</span>';
+    }
+
+    if (hasGoogleScriptRun()) {
+      google.script.run
+        .withSuccessHandler(function (res) {
+          if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = origText;
+          }
+          processScanSuccess(res);
+          if (!isSilent) {
+            showAuditStatus("success", "✓ Berhasil memindai " + res.totalItems + " item dari sheet Central Kitchen & Central Storage!");
+          }
+        })
+        .withFailureHandler(function (err) {
+          if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = origText;
+          }
+          showAuditStatus("error", "Gagal memindai sheet: " + (err && err.message ? err.message : String(err)));
+        })
+        .scanCentralSheetsDirectly();
+    } else {
+      // Mock Browser Simulation
+      setTimeout(function () {
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = origText;
+        }
+        var mockRes = getMockScanData();
+        processScanSuccess(mockRes);
+        if (!isSilent) {
+          showAuditStatus("success", "[MOCK BROWSER] Berhasil memindai " + mockRes.totalItems + " item dari sheet live!");
+        }
+      }, 500);
+    }
+  }
+
+  function processScanSuccess(scanResult) {
+    lastLiveScanResult = scanResult;
+
+    // Ratakan seluruh item menjadi satu daftar untuk preview view table
+    var flat = [];
+    (scanResult.datasets || []).forEach(function (ds) {
+      var latestCol = ds.periodCols && ds.periodCols.length > 0 ? ds.periodCols[ds.periodCols.length - 1] : "";
+      ds.items.forEach(function (it, idx) {
+        flat.push({
+          rowId: ds.kategori + "_" + idx,
+          item: it.ITEM,
+          sheet: ds.sheetName,
+          kategori: ds.kategori,
+          gramasi: it.GRAMASI || "-",
+          latestCol: latestCol,
+          latestPrice: it[latestCol] || null,
+          rawItem: it
+        });
+      });
+    });
+    allScannedItemsFlat = flat;
+
+    // Tampilkan bagian output
+    var sectionEl = document.getElementById("scannerOutputSection");
+    if (sectionEl) sectionEl.classList.remove("hidden");
+
+    var tsEl = document.getElementById("scannerTimestampText");
+    if (tsEl) {
+      var dateStr = new Date(scanResult.scannedAt || Date.now()).toLocaleTimeString("id-ID", { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      tsEl.textContent = "Terakhir discan: " + dateStr + " WIB (" + (scanResult.spreadsheetName || "Spreadsheet Aktif") + ")";
+    }
+
+    document.getElementById("statScanTotalItems").textContent = scanResult.totalItems;
+    document.getElementById("statScanTotalPeriods").textContent = (scanResult.allPeriods || []).length;
+    var latestPeriod = scanResult.allPeriods && scanResult.allPeriods.length > 0
+      ? scanResult.allPeriods[scanResult.allPeriods.length - 1]
+      : "-";
+    var latestPeriodEl = document.getElementById("statScanLatestPeriod");
+    latestPeriodEl.textContent = latestPeriod;
+    latestPeriodEl.title = latestPeriod;
+
+    document.getElementById("scannerTotalItemBadge").textContent = scanResult.totalItems + " Item Ditemukan";
+
+    // Rincian per Tab Sheet
+    var sheetsListEl = document.getElementById("scannerSheetsList");
+    if (sheetsListEl) {
+      sheetsListEl.innerHTML = (scanResult.datasets || []).map(function (ds) {
+        var isKitchen = ds.kategori.indexOf("KITCHEN") !== -1;
+        var badgeCls = isKitchen ? "bg-emerald-100 text-emerald-800 border-emerald-300" : "bg-sky-100 text-sky-800 border-sky-300";
+        var dotCls = isKitchen ? "bg-emerald-500" : "bg-sky-500";
+        return (
+          '<div class="flex items-center justify-between p-2 rounded-md border border-slate-200 bg-slate-50 text-[11px]">' +
+            '<div class="flex items-center gap-2">' +
+              '<span class="h-2 w-2 rounded-full ' + dotCls + '"></span>' +
+              '<div>' +
+                '<span class="font-bold text-slate-800">' + escapeHtml(ds.sheetName) + '</span>' +
+                '<span class="text-slate-400 text-[10px] ml-1.5">(Header baris ke-' + ds.headerRow + ')</span>' +
+              '</div>' +
+            '</div>' +
+            '<div class="flex items-center gap-1.5">' +
+              '<span class="text-[10px] text-slate-500">' + ds.periodCols.length + ' periode</span>' +
+              '<span class="px-1.5 py-0.5 rounded text-[10px] font-bold border ' + badgeCls + '">' + ds.itemCount + ' item</span>' +
+            '</div>' +
+          '</div>'
+        );
+      }).join("");
+
+      if (scanResult.missingSheets && scanResult.missingSheets.length > 0) {
+        sheetsListEl.innerHTML += scanResult.missingSheets.map(function (m) {
+          return (
+            '<div class="p-2 rounded-md border border-amber-200 bg-amber-50 text-[11px] text-amber-800 flex items-center justify-between">' +
+              '<span>⚠️ Sheet <strong>' + escapeHtml(m) + '</strong> tidak ditemukan</span>' +
+            '</div>'
+          );
+        }).join("");
+      }
+    }
+
+    renderScannerItemsTableUI();
+  }
+
+  function handleScannerFilterChange() {
+    renderScannerItemsTableUI();
+  }
+
+  function renderScannerItemsTableUI() {
+    var tbody = document.getElementById("scannerItemsTbody");
+    var counterEl = document.getElementById("scannerFilterCountText");
+    if (!tbody) return;
+
+    var searchVal = (document.getElementById("scannerSearchInput").value || "").trim().toLowerCase();
+    var sheetFilter = document.getElementById("scannerSheetFilterSelect").value;
+
+    var filtered = allScannedItemsFlat.filter(function (it) {
+      if (sheetFilter !== "ALL" && it.kategori !== sheetFilter) return false;
+      if (searchVal && it.item.toLowerCase().indexOf(searchVal) === -1) return false;
+      return true;
+    });
+
+    if (counterEl) {
+      counterEl.textContent = filtered.length + " dari " + allScannedItemsFlat.length + " item";
+    }
+
+    // Tampilkan 100 baris pertama
+    var rowsToShow = filtered.slice(0, 100);
+
+    var html = rowsToShow.map(function (it, idx) {
+      var isKitchen = it.kategori.indexOf("KITCHEN") !== -1;
+      var tagCls = isKitchen ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-sky-50 text-sky-700 border-sky-200";
+      var tagLabel = isKitchen ? "Kitchen" : "Storage";
+      return (
+        '<tr class="hover:bg-slate-50 transition-colors">' +
+          '<td class="px-2 py-1.5 text-center text-slate-400 font-mono">' + (idx + 1) + '</td>' +
+          '<td class="px-2 py-1.5 font-semibold text-slate-800">' +
+            escapeHtml(it.item) +
+          '</td>' +
+          '<td class="px-2 py-1.5 text-center">' +
+            '<span class="inline-block px-1.5 py-0.5 rounded text-[9px] font-bold border ' + tagCls + '">' + tagLabel + '</span>' +
+          '</td>' +
+          '<td class="px-2 py-1.5 text-center font-mono text-slate-600">' + escapeHtml(it.gramasi) + '</td>' +
+          '<td class="px-2 py-1.5 text-right font-mono font-bold text-emerald-950">' +
+            (it.latestPrice !== null ? formatIDR(it.latestPrice, true) : '-') +
+          '</td>' +
+        '</tr>'
+      );
+    }).join("");
+
+    if (filtered.length === 0) {
+      html = '<tr><td colspan="5" class="py-4 text-center text-slate-400">Tidak ada item yang cocok dengan pencarian</td></tr>';
+    } else if (filtered.length > 100) {
+      html += '<tr><td colspan="5" class="py-2 text-center text-[10px] text-slate-400 bg-slate-50">+ ' + (filtered.length - 100) + ' item lainnya (gunakan pencarian untuk menyaring)</td></tr>';
+    }
+
+    tbody.innerHTML = html;
+  }
+
+  /**
+   * EKSEKUSI UTAMA YANG DIMINTA USER:
+   * Mengupdate data pembanding secara langsung (Auto Update JSON maupun .gs)
+   */
+  function handleAutoUpdateDataPembanding() {
+    var btn = document.getElementById("btnAutoUpdateDataPembanding");
+    var origText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span>⏳ MENGUPDATE DATA PEMBANDING (JSON &amp; .GS)...</span>';
+
+    if (hasGoogleScriptRun()) {
+      google.script.run
+        .withSuccessHandler(function (pkg) {
+          btn.disabled = false;
+          btn.innerHTML = origText;
+          applyUpdatePackageToClient(pkg);
+        })
+        .withFailureHandler(function (err) {
+          btn.disabled = false;
+          btn.innerHTML = origText;
+          showAuditStatus("error", "Gagal auto-update data pembanding: " + (err && err.message ? err.message : String(err)));
+        })
+        .updateDataPembandingFromLiveScan();
+    } else {
+      // Mock Browser Simulation
+      setTimeout(function () {
+        btn.disabled = false;
+        btn.innerHTML = origText;
+        var mockPkg = getMockUpdatePackage();
+        applyUpdatePackageToClient(mockPkg);
+      }, 700);
+    }
+  }
+
+  function applyUpdatePackageToClient(pkg) {
+    lastLiveUpdatePackage = pkg;
+
+    // 1. Perbarui availableJsonPresets di in-memory client
+    if (typeof availableJsonPresets === "undefined") {
+      window.availableJsonPresets = [];
+    }
+
+    if (Array.isArray(pkg.livePresets)) {
+      pkg.livePresets.forEach(function (liveDs) {
+        var foundIdx = -1;
+        for (var i = 0; i < availableJsonPresets.length; i++) {
+          var existing = availableJsonPresets[i];
+          if (
+            existing.id === liveDs.id ||
+            existing.name.toUpperCase().indexOf(liveDs.name.toUpperCase()) !== -1 ||
+            existing.id.indexOf(liveDs.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")) !== -1
+          ) {
+            foundIdx = i;
+            break;
+          }
+        }
+
+        if (foundIdx !== -1) {
+          availableJsonPresets[foundIdx] = liveDs;
+        } else {
+          availableJsonPresets.unshift(liveDs);
+        }
+
+        if (typeof selectedDatasetIds !== "undefined") {
+          selectedDatasetIds[liveDs.id] = true;
+        }
+      });
+    }
+
+    // 2. Simpan juga ke localStorage agar Menu 02 selalu mengutamakan data live ini
+    try {
+      localStorage.setItem("AUDIT_LIVE_SCANNED_PRESETS", JSON.stringify(pkg.livePresets));
+    } catch (e) {}
+
+    // 3. Refresh Menu 02 (Pembanding HPP) & Menu 03 (Replace HPP)
+    if (typeof renderJsonDatasetChecklist === "function") {
+      renderJsonDatasetChecklist();
+    }
+    if (typeof rebuildMergedInventoryFromSelected === "function") {
+      rebuildMergedInventoryFromSelected();
+    }
+    if (typeof initRepHppPresets === "function") {
+      initRepHppPresets();
+    }
+    if (typeof initRepHppPeriodSourceDropdown === "function") {
+      initRepHppPeriodSourceDropdown();
+    }
+    if (typeof recomputeHppComparison === "function" && typeof rawHppSelection !== "undefined" && rawHppSelection) {
+      recomputeHppComparison();
+    }
+
+    // 4. Tampilkan Notifikasi Sukses & Buka Panel File
+    var noticeEl = document.getElementById("scannerAppliedNotice");
+    if (noticeEl) noticeEl.classList.remove("hidden");
+
+    var filesPanel = document.getElementById("scannerFilesPanel");
+    if (filesPanel) filesPanel.open = true;
+
+    switchGeneratedFileTab(currentActiveGenTab);
+
+    showAuditStatus(
+      "success",
+      "✓ BERHASIL! Data pembanding (JSON & .gs) telah otomatis diperbarui dari sheet Central Kitchen & Central Storage!"
+    );
+  }
+
+  function switchGeneratedFileTab(tabKey) {
+    currentActiveGenTab = tabKey;
+
+    var btnGs = document.getElementById("tabBtnGs");
+    var btnKitchen = document.getElementById("tabBtnKitchen");
+    var btnStorage = document.getElementById("tabBtnStorage");
+    var labelEl = document.getElementById("genFileLabel");
+    var viewerEl = document.getElementById("genFilePreViewer");
+
+    [btnGs, btnKitchen, btnStorage].forEach(function (b) {
+      if (b) {
+        b.className = "px-2 py-1 rounded font-semibold bg-slate-200 text-slate-700 hover:bg-slate-300";
+      }
+    });
+
+    var activeText = "";
+    var activeLabel = "";
+
+    if (tabKey === "kitchen") {
+      if (btnKitchen) btnKitchen.className = "px-2 py-1 rounded font-bold bg-slate-800 text-white";
+      activeLabel = "02-data-pembanding/central-kitchen.json";
+      activeText = lastLiveUpdatePackage ? lastLiveUpdatePackage.kitchenJson : "// Belum ada data. Klik Update Data Pembanding.";
+    } else if (tabKey === "storage") {
+      if (btnStorage) btnStorage.className = "px-2 py-1 rounded font-bold bg-slate-800 text-white";
+      activeLabel = "02-data-pembanding/central-storage.json";
+      activeText = lastLiveUpdatePackage ? lastLiveUpdatePackage.storageJson : "// Belum ada data. Klik Update Data Pembanding.";
+    } else {
+      if (btnGs) btnGs.className = "px-2 py-1 rounded font-bold bg-slate-800 text-white";
+      activeLabel = "02-data-pembanding/DataPembanding.gs (Apps Script)";
+      activeText = lastLiveUpdatePackage ? lastLiveUpdatePackage.dataPembandingGs : "// Belum ada data. Klik Update Data Pembanding.";
+    }
+
+    if (labelEl) labelEl.textContent = activeLabel;
+    if (viewerEl) viewerEl.textContent = activeText;
+  }
+
+  function handleCopyActiveGeneratedFile() {
+    var viewerEl = document.getElementById("genFilePreViewer");
+    var text = viewerEl ? viewerEl.textContent : "";
+    if (!text || text.indexOf("// Belum ada data") === 0) {
+      showAuditStatus("error", "Belum ada file yang di-generate.");
+      return;
+    }
+
+    if (navigator && navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () {
+        showAuditStatus("success", "✓ Isi file berhasil disalin ke clipboard!");
+      });
+    } else {
+      showAuditStatus("success", "Isi file siap (" + text.length + " karakter).");
+    }
+  }
+
+  function handleDownloadAllUpdatedFiles() {
+    if (!lastLiveUpdatePackage) {
+      showAuditStatus("error", "Klik tombol Update Data Pembanding terlebih dahulu.");
+      return;
+    }
+
+    var files = [
+      { name: "DataPembanding.gs", content: lastLiveUpdatePackage.dataPembandingGs, type: "text/javascript" },
+      { name: "central-kitchen.json", content: lastLiveUpdatePackage.kitchenJson, type: "application/json" },
+      { name: "central-storage.json", content: lastLiveUpdatePackage.storageJson, type: "application/json" }
+    ];
+
+    files.forEach(function (f, idx) {
+      setTimeout(function () {
+        var blob = new Blob([f.content], { type: f.type });
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement("a");
+        a.href = url;
+        a.download = f.name;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }, idx * 250);
+    });
+
+    showAuditStatus("success", "✓ Mengunduh 3 file: DataPembanding.gs, central-kitchen.json, dan central-storage.json!");
+  }
+
+  function getClientTimestampSuffix(d) {
+    var date = d || new Date();
+    var pad = function (n) { return (n < 10 ? "0" : "") + n; };
+    return (
+      date.getFullYear() +
+      pad(date.getMonth() + 1) +
+      pad(date.getDate()) +
+      "-" +
+      pad(date.getHours()) +
+      pad(date.getMinutes()) +
+      pad(date.getSeconds())
+    );
+  }
+
+  /**
+   * Menggunakan File System Access API untuk langsung menulis ke folder proyek lokal jika diizinkan browser.
+   * Sebelum menimpa, file lama otomatis di-backup ke subfolder 'history/'.
+   */
+  async function handleDirectSaveToWorkspaceFolder() {
+    if (!lastLiveUpdatePackage) {
+      showAuditStatus("error", "Klik tombol Update Data Pembanding terlebih dahulu.");
+      return;
+    }
+
+    if (!window.showDirectoryPicker) {
+      // Fallback ke auto download jika browser tidak mendukung
+      handleDownloadAllUpdatedFiles();
+      return;
+    }
+
+    try {
+      showAuditStatus("info", "Pilih folder proyek Anda (c:\\DEV\\addons-spreadsheet)...");
+      var dirHandle = await window.showDirectoryPicker();
+
+      // Cek apakah user memilih root folder atau folder 02-data-pembanding
+      var targetDir = dirHandle;
+      try {
+        targetDir = await dirHandle.getDirectoryHandle("02-data-pembanding", { create: false });
+      } catch (e) {
+        // User mungkin langsung memilih folder 02-data-pembanding
+      }
+
+      // 1. Buat / buka subfolder 'history'
+      var historyDir = await targetDir.getDirectoryHandle("history", { create: true });
+      var ts = (lastLiveUpdatePackage && lastLiveUpdatePackage.timestampSuffix)
+        ? lastLiveUpdatePackage.timestampSuffix
+        : getClientTimestampSuffix();
+
+      // 2. Backup file lama ke subfolder history sebelum ditimpa
+      try {
+        var oldGsHandle = await targetDir.getFileHandle("DataPembanding.gs", { create: false });
+        var oldGsFile = await oldGsHandle.getFile();
+        var oldGsText = await oldGsFile.text();
+        var backupGs = await historyDir.getFileHandle("DataPembanding_" + ts + ".gs", { create: true });
+        var wBGs = await backupGs.createWritable();
+        await wBGs.write(oldGsText);
+        await wBGs.close();
+      } catch (e) {}
+
+      try {
+        var oldKitHandle = await targetDir.getFileHandle("central-kitchen.json", { create: false });
+        var oldKitFile = await oldKitHandle.getFile();
+        var oldKitText = await oldKitFile.text();
+        var backupKit = await historyDir.getFileHandle("central-kitchen_" + ts + ".json", { create: true });
+        var wBKit = await backupKit.createWritable();
+        await wBKit.write(oldKitText);
+        await wBKit.close();
+      } catch (e) {}
+
+      try {
+        var oldStoHandle = await targetDir.getFileHandle("central-storage.json", { create: false });
+        var oldStoFile = await oldStoHandle.getFile();
+        var oldStoText = await oldStoFile.text();
+        var backupSto = await historyDir.getFileHandle("central-storage_" + ts + ".json", { create: true });
+        var wBSto = await backupSto.createWritable();
+        await wBSto.write(oldStoText);
+        await wBSto.close();
+      } catch (e) {}
+
+      // 3. Tulis file terbaru ke 02-data-pembanding/
+      // Tulis DataPembanding.gs
+      var fileGs = await targetDir.getFileHandle("DataPembanding.gs", { create: true });
+      var writableGs = await fileGs.createWritable();
+      await writableGs.write(lastLiveUpdatePackage.dataPembandingGs);
+      await writableGs.close();
+
+      // Tulis central-kitchen.json
+      var fileKitchen = await targetDir.getFileHandle("central-kitchen.json", { create: true });
+      var writableKitchen = await fileKitchen.createWritable();
+      await writableKitchen.write(lastLiveUpdatePackage.kitchenJson);
+      await writableKitchen.close();
+
+      // Tulis central-storage.json
+      var fileStorage = await targetDir.getFileHandle("central-storage.json", { create: true });
+      var writableStorage = await fileStorage.createWritable();
+      await writableStorage.write(lastLiveUpdatePackage.storageJson);
+      await writableStorage.close();
+
+      // 4. Update juga dist-clasp jika di root folder
+      try {
+        var distDir = await dirHandle.getDirectoryHandle("dist-clasp", { create: false });
+        var distGs = await distDir.getFileHandle("DataPembanding.gs", { create: true });
+        var wDistGs = await distGs.createWritable();
+        await wDistGs.write(lastLiveUpdatePackage.dataPembandingGs);
+        await wDistGs.close();
+      } catch (e) {}
+
+      showAuditStatus(
+        "success",
+        "✓ BERHASIL! File lama otomatis di-backup ke folder '02-data-pembanding/history/' (suffix: " + ts + "). File terbaru telah diperbarui!"
+      );
+    } catch (err) {
+      if (err.name !== "AbortError") {
+        showAuditStatus("error", "Gagal menyimpan: " + err.message + ". Menggunakan download biasa...");
+        handleDownloadAllUpdatedFiles();
+      }
+    }
+  }
+
+  function handleResetToBuiltinPresets() {
+    if (confirm("Kembalikan data pembanding ke data bawaan DataPembanding.gs asli?")) {
+      if (hasGoogleScriptRun()) {
+        google.script.run
+          .withSuccessHandler(function () {
+            if (typeof initReferenceJsonPresets === "function") {
+              initReferenceJsonPresets();
+            }
+            var noticeEl = document.getElementById("scannerAppliedNotice");
+            if (noticeEl) noticeEl.classList.add("hidden");
+            showAuditStatus("success", "✓ Data pembanding berhasil di-reset ke bawaan DataPembanding.gs asli.");
+          })
+          .clearCustomReferencePresets();
+      } else {
+        if (typeof initReferenceJsonPresets === "function") {
+          initReferenceJsonPresets();
+        }
+        var noticeEl = document.getElementById("scannerAppliedNotice");
+        if (noticeEl) noticeEl.classList.add("hidden");
+        showAuditStatus("success", "[MOCK BROWSER] Cache di-reset ke bawaan DataPembanding.gs.");
+      }
+    }
+  }
+
+  // Mock data fallback saat testing di browser lokal
+  function getMockScanData() {
+    var rawItems = (typeof normalizedRefItems !== "undefined" && normalizedRefItems.length > 0)
+      ? normalizedRefItems
+      : [];
+
+    var kitchenItems = [];
+    var storageItems = [];
+
+    rawItems.forEach(function (it) {
+      var obj = Object.assign({ ITEM: it.itemName, GRAMASI: it.gramasiUnit || "-" }, it.priceByCol || {});
+      if (it.kategori && it.kategori.indexOf("KITCHEN") !== -1) {
+        kitchenItems.push(obj);
+      } else {
+        storageItems.push(obj);
+      }
+    });
+
+    var periods = typeof discoveredPeriodNames !== "undefined" ? discoveredPeriodNames : ["PL UPDATE 15 OKTOBER 2026", "PL CENTRAL 15 OKTOBER 2026"];
+
+    return {
+      success: true,
+      scannedAt: new Date().toISOString(),
+      spreadsheetName: "Spreadsheet Resep & Inventory",
+      totalDatasets: 2,
+      totalItems: kitchenItems.length + storageItems.length,
+      allPeriods: periods,
+      missingSheets: [],
+      datasets: [
+        {
+          id: "inv-central-kitchen",
+          name: "CENTRAL KITCHEN",
+          sheetName: "CENTRAL KITCHEN",
+          kategori: "CENTRAL KITCHEN",
+          headerRow: 2,
+          itemCount: kitchenItems.length,
+          periodCols: periods,
+          items: kitchenItems
+        },
+        {
+          id: "inv-central-storage",
+          name: "CENTRAL STORAGE",
+          sheetName: "CENTRAL STORAGE",
+          kategori: "CENTRAL STORAGE",
+          headerRow: 2,
+          itemCount: storageItems.length,
+          periodCols: periods,
+          items: storageItems
+        }
+      ]
+    };
+  }
+
+  function getMockUpdatePackage() {
+    var scanData = getMockScanData();
+    return {
+      success: true,
+      scannedAt: new Date().toISOString(),
+      totalItems: scanData.totalItems,
+      totalDatasets: scanData.totalDatasets,
+      datasets: scanData.datasets,
+      livePresets: scanData.datasets.map(function (ds) {
+        return {
+          id: ds.id,
+          name: ds.name,
+          period: ds.sheetName + " (" + ds.itemCount + " Item Live)",
+          defaultSelected: true,
+          data: ds.items,
+          isLiveUpdated: true
+        };
+      }),
+      kitchenJson: JSON.stringify({ metadata: { sourceSheet: "CENTRAL KITCHEN" }, data: scanData.datasets[0].items }, null, 2),
+      storageJson: JSON.stringify({ metadata: { sourceSheet: "CENTRAL STORAGE" }, data: scanData.datasets[1].items }, null, 2),
+      dataPembandingGs: "// DataPembanding.gs auto-generated live (" + scanData.totalItems + " Item)"
+    };
+  }
+</script>

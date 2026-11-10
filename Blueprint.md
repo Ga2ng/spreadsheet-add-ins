@@ -14,13 +14,15 @@ c:\DEV\addons-spreadsheet\
 │   └── Code.gs                        <-- Backend Apps Script (include helper, 2-color engine, auto create table)
 ├── 02-data-pembanding\
 │   ├── DataPembanding.gs              <-- HASIL CONVERT JSON (Hemat 86% Token, Dibaca Langsung oleh Apps Script)
-│   ├── central-kitchen.json           <-- JSON Sumber 1: Central Kitchen (180 Item Valid)
-│   └── central-storage.json           <-- JSON Sumber 2: Central Storage (250 Item Valid)
+│   ├── central-kitchen.json           <-- JSON Sumber 1: Central Kitchen (182 Item Valid)
+│   ├── central-storage.json           <-- JSON Sumber 2: Central Storage (250 Item Valid)
+│   └── history\                       <-- Folder Backup Otomatis File Lama Sebelum Update (*_YYYYMMDD-HHmmss)
 ├── 03-sidebar-ui\
 │   ├── Sidebar.html                   <-- Layout Shell & Navigation Switcher (Modular Host)
 │   ├── ParserView.html                <-- Menu 01: Parser Range Sheet ke JSON
 │   ├── PembandingView.html            <-- Menu 02: Pembanding HPP (2 Warna & Auto Create Tabel)
-│   └── ReplaceHppView.html            <-- Menu 03: Replace Harga HPP (Preview & Apply ke Sheet)
+│   ├── ReplaceHppView.html            <-- Menu 03: Replace Harga HPP (Preview & Apply ke Sheet)
+│   └── ScannerView.html               <-- Menu 04: Scanner Sheet (Central Storage & Kitchen Live Scan)
 ├── RULES.md                           <-- Aturan Pewarnaan 2 Warna & Format Ringkasan Note
 ├── scripts\
 │   └── convert-json.js                <-- Converter JSON & Sync Otomatis ke dist-clasp/
@@ -79,7 +81,27 @@ Sesuai permintaan terbaru, warna biru resmi dihapus:
 
 ---
 
-## 5. Perintah Terminal (`npm run convert` & `npm run push`)
+## 5. Alur Eksekusi Menu 04 — Scanner Sheet Live (Central Storage & Kitchen)
+
+Fitur ini dibuat khusus untuk memindai tabel sheet `CENTRAL STORAGE` dan `CENTRAL KITCHEN` secara langsung dari Spreadsheet aktif, sehingga **tidak perlu lagi download JSON -> convert -> clasp push setiap kali ada update data**:
+
+1. **Buka Menu 04 di Sidebar:**
+   - Pilih `04. Scanner Sheet (Central Storage & Kitchen Live)`.
+2. **Tinjau View Table Hasil Scan:**
+   - Apps Script otomatis mendeteksi baris header (kolom `ITEM`, `GRAMASI`, dan kolom harga `PL UPDATE` / `PL CENTRAL`).
+   - Menampilkan view table seluruh bahan, kolom periode aktif, dan harga terbaru, lengkap dengan search box pencarian instan.
+3. **Klik Tombol `⚡ UPDATE DATA PEMBANDING (AUTO UPDATE JSON & .GS)`:**
+   - **Di Spreadsheet**: Data pembanding langsung tersimpan permanen di `DocumentProperties` & memory. Menu 02 (Pembanding HPP) dan Menu 03 (Replace HPP) langsung otomatis menggunakan data live terbaru!
+   - **Di File**: Meng-generate kode `DataPembanding.gs` (format ringkas hemat 86% token) serta `central-kitchen.json` dan `central-storage.json`.
+   - **Auto History Backup**: Sebelum file lama ditimpa, sistem otomatis membuat salinan cadangan (*backup copy*) file sebelumnya ke folder `02-data-pembanding/history/` dengan format nama ber-timestamp (`DataPembanding_YYYYMMDD-HHmmss.gs`, `central-kitchen_...json`, dsb). Anda bebas memeriksa riwayat atau menghapus file lama secara manual dari folder tersebut kapan saja.
+4. **Opsi Download / Simpan File Lokal:**
+   - `📥 Download 3 File (.gs & 2 .json)`: 1-klik download ketiga file yang sudah terupdate ke komputer Anda.
+   - `📁 Simpan ke Folder Proyek`: Menuliskan langsung ketiga file ke folder `c:\DEV\addons-spreadsheet\02-data-pembanding\` (sekaligus otomatis meng-copy file lama ke subfolder `history/`).
+   - `📋 Copy Isi File`: Tersedia tab preview untuk menyalin langsung isi kode `.gs` atau `.json`.
+
+---
+
+## 6. Perintah Terminal (`npm run convert` & `npm run push`)
 
 ```powershell
 # Convert ulang file JSON di 02-data-pembanding/ ke DataPembanding.gs sekaligus sync semua file modular ke dist-clasp/

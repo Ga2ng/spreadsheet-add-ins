@@ -28,7 +28,22 @@ const path = require("path");
 const rootDir = path.resolve(__dirname, "..");
 const dataDir = path.join(rootDir, "02-data-pembanding");
 const outGsPath = path.join(dataDir, "DataPembanding.gs");
+const historyDir = path.join(dataDir, "history");
 const distClaspDir = path.join(rootDir, "dist-clasp");
+
+/**
+ * Format timestamp untuk penamaan file history (contoh: 20261110-083500)
+ */
+function getTimestampSuffix(d = new Date()) {
+  const pad = (n) => String(n).padStart(2, "0");
+  const yyyy = d.getFullYear();
+  const MM = pad(d.getMonth() + 1);
+  const dd = pad(d.getDate());
+  const HH = pad(d.getHours());
+  const mm = pad(d.getMinutes());
+  const ss = pad(d.getSeconds());
+  return `${yyyy}${MM}${dd}-${HH}${mm}${ss}`;
+}
 
 /**
  * Mengubah nilai harga mentah ("Rp 11.635", "Rp 46.000,00", "Rp 16,80", 66.5, "Rp0", null)
@@ -323,6 +338,28 @@ ${presetEntries.join(",\n")}
 }
 `;
 
+  // Buat folder history jika belum ada
+  if (!fs.existsSync(historyDir)) {
+    fs.mkdirSync(historyDir, { recursive: true });
+  }
+
+  const ts = getTimestampSuffix();
+
+  // 1. Backup file DataPembanding.gs lama sebelum ditimpa
+  if (fs.existsSync(outGsPath)) {
+    const backupGsPath = path.join(historyDir, `DataPembanding_${ts}.gs`);
+    fs.copyFileSync(outGsPath, backupGsPath);
+    console.log(`📦 History backup: 02-data-pembanding/history/DataPembanding_${ts}.gs`);
+  }
+
+  // 2. Backup file JSON lama yang ada di folder sebelum ditimpa
+  for (const fp of allJsonInFolder) {
+    const baseName = path.basename(fp, ".json");
+    const backupJsonPath = path.join(historyDir, `${baseName}_${ts}.json`);
+    fs.copyFileSync(fp, backupJsonPath);
+    console.log(`📦 History backup: 02-data-pembanding/history/${baseName}_${ts}.json`);
+  }
+
   fs.writeFileSync(outGsPath, gsOutput, "utf8");
 
   // Pastikan 03-sidebar-ui/PembandingView.html tetap ringan & bersih
@@ -367,6 +404,7 @@ ${parsedDatasets
     { src: "03-sidebar-ui/Sidebar.html", dest: "Sidebar.html" },
     { src: "03-sidebar-ui/PembandingView.html", dest: "PembandingView.html" },
     { src: "03-sidebar-ui/ReplaceHppView.html", dest: "ReplaceHppView.html" },
+    { src: "03-sidebar-ui/ScannerView.html", dest: "ScannerView.html" },
     { src: "03-sidebar-ui/ParserView.html", dest: "ParserView.html" }
   ];
 

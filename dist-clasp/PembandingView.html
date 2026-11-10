@@ -463,28 +463,40 @@ Fitur:
   function initReferenceJsonPresets() {
     var localCustom = [];
     try {
+      var liveSaved = localStorage.getItem("AUDIT_LIVE_SCANNED_PRESETS");
+      if (liveSaved) {
+        var parsedLive = JSON.parse(liveSaved);
+        if (Array.isArray(parsedLive) && parsedLive.length > 0) {
+          localCustom = parsedLive;
+        }
+      }
       var saved = localStorage.getItem("AUDIT_CUSTOM_JSON_PRESETS");
-      if (saved) localCustom = JSON.parse(saved) || [];
+      if (saved) {
+        var parsedSaved = JSON.parse(saved);
+        if (Array.isArray(parsedSaved)) localCustom = localCustom.concat(parsedSaved);
+      }
     } catch (e) {}
 
     if (hasGoogleScriptRun()) {
       google.script.run
         .withSuccessHandler(function (presets) {
-          var list = Array.isArray(presets) && presets.length > 0 ? presets : FALLBACK_JSON_PRESETS;
-          availableJsonPresets = deduplicatePresetList(list.concat(localCustom));
+          var list = Array.isArray(presets) && presets.length > 0 ? presets : (localCustom.length > 0 ? localCustom : FALLBACK_JSON_PRESETS);
+          availableJsonPresets = deduplicatePresetList(list);
           initDefaultCheckedDatasets();
           renderJsonDatasetChecklist();
           rebuildMergedInventoryFromSelected();
         })
         .withFailureHandler(function () {
-          availableJsonPresets = deduplicatePresetList(FALLBACK_JSON_PRESETS.concat(localCustom));
+          var fallbackList = localCustom.length > 0 ? localCustom : FALLBACK_JSON_PRESETS;
+          availableJsonPresets = deduplicatePresetList(fallbackList);
           initDefaultCheckedDatasets();
           renderJsonDatasetChecklist();
           rebuildMergedInventoryFromSelected();
         })
         .getAvailableReferenceJsonPresets();
     } else {
-      availableJsonPresets = deduplicatePresetList(FALLBACK_JSON_PRESETS.concat(localCustom));
+      var fallbackList = localCustom.length > 0 ? localCustom : FALLBACK_JSON_PRESETS;
+      availableJsonPresets = deduplicatePresetList(fallbackList);
       initDefaultCheckedDatasets();
       renderJsonDatasetChecklist();
       rebuildMergedInventoryFromSelected();
@@ -497,8 +509,9 @@ Fitur:
     (list || []).forEach(function (item) {
       if (!item || !item.id) return;
       if (item.id === "merged-kitchen-storage-default") return;
-      if (!seen[item.id]) {
-        seen[item.id] = true;
+      var cleanId = String(item.id).toLowerCase().replace(/[^a-z0-9]+/g, "-");
+      if (!seen[cleanId]) {
+        seen[cleanId] = true;
         out.push(item);
       }
     });
