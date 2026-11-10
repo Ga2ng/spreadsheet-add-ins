@@ -49,8 +49,8 @@ Menu fitur dipecah modular ke dalam file HTML terpisah:
       >
         <option value="ciamso-pembanding" selected>05. Pembanding HPP Ciamso (Inventory Okt)</option>
         <option value="ciamso-replace">06. Replace Data (Replace All Bahan di Sheet)</option>
+        <option value="replace-range">03. Replace Range Seleksi (Universal di Sheet Aktif)</option>
         <option value="hpp-audit">02. Pembanding HPP Central (2 Warna &amp; Auto Create Tabel)</option>
-        <option value="replace-hpp">03. Replace Harga HPP Central (Preview &amp; Apply ke Sheet)</option>
         <option value="scanner">04. Scanner Sheet (Central Storage &amp; Kitchen Live)</option>
         <option value="parser">01. Parser (Sheet Range → JSON)</option>
       </select>
@@ -87,9 +87,9 @@ Menu fitur dipecah modular ke dalam file HTML terpisah:
       if (mode === "parser") {
         if (viewParser) viewParser.classList.remove("hidden");
         if (subtitle) subtitle.textContent = "Mode: 01. Parser (Sheet Range → JSON)";
-      } else if (mode === "replace-hpp") {
+      } else if (mode === "replace-range" || mode === "replace-hpp") {
         if (viewReplace) viewReplace.classList.remove("hidden");
-        if (subtitle) subtitle.textContent = "Mode: 03. Replace Harga HPP Central (Preview & Apply ke Sheet)";
+        if (subtitle) subtitle.textContent = "Mode: 03. Replace Range Seleksi (Universal di Sheet Aktif)";
         if (typeof initReplaceHppView === "function") {
           initReplaceHppView();
         }
@@ -226,7 +226,7 @@ Menu fitur dipecah modular ke dalam file HTML terpisah:
   </main>
 
   <footer class="py-2 px-3 text-center text-[11px] text-slate-400 border-t border-slate-200 bg-white">
-    Audit Data Tools • Modular Edition (01. Parser • 02. Pembanding • 03. Replace • 04. Scanner • 05. Ciamso Scan • 06. Ciamso HPP)
+    Audit Data Tools • Modular Edition (01. Parser • 02. Pembanding Central • 03. Replace Range • 04. Scanner Central • 05. Ciamso HPP • 06. Replace Data)
   </footer>
 
   <script>

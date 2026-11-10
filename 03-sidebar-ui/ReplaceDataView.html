@@ -46,10 +46,11 @@ Fitur:
       <button
         id="tabBtnSelection"
         type="button"
-        onclick="switchReplaceDataTab('selection')"
-        class="py-1.5 px-3 border-b-2 border-transparent text-slate-500 hover:text-slate-700"
+        onclick="switchFeatureMode('replace-range')"
+        class="py-1.5 px-3 border-b-2 border-transparent text-emerald-700 hover:text-emerald-900 font-bold"
+        title="Buka Menu 03 (Universal Range Replacer)"
       >
-        🔍 Range Seleksi
+        🔍 Range Seleksi (Menu 03) ↗
       </button>
     </div>
   </section>
@@ -200,34 +201,21 @@ Fitur:
     </div>
   </section>
 
-  <!-- PANEL 3: RANGE SELEKSI MANUAL -->
+  <!-- PANEL 3: RANGE SELEKSI MANUAL DIPINDAHKAN KE MENU 03 -->
   <section id="panelSelection" class="hidden bg-white rounded-lg border border-slate-200 p-3.5 shadow-sm space-y-3">
-    <div>
-      <h3 class="text-xs font-bold text-slate-800">Mode Range Seleksi Manual</h3>
-      <p class="text-[11px] text-slate-500">
-        Blok range resep tertentu di Google Sheets (8 kolom HPP) dan replace kolom HARGA / KEMASAN-nya.
+    <div class="bg-emerald-50 border border-emerald-200 rounded-md p-3 text-xs space-y-2">
+      <div class="font-bold text-emerald-900 flex items-center gap-1.5">
+        <span>✨ Fitur Range Seleksi Kini Menjadi Menu 03 Mandiri</span>
+      </div>
+      <p class="text-slate-600 leading-relaxed text-[11px]">
+        Sesuai instruksi, fitur penggantian range seleksi telah dipisahkan menjadi <b>Menu 03. Replace Range Seleksi (Universal)</b>. Fitur ini bekerja tanpa auto-value paksaan dan dapat digunakan pada <b>SEMUA sheet &amp; jenis tabel</b>.
       </p>
-    </div>
-
-    <button
-      id="btnReadSelectionReplace"
-      type="button"
-      onclick="handleReadSelectionReplace()"
-      class="w-full py-2 px-3 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold rounded shadow-sm"
-    >
-      <span>1. Baca Range yang Sedang Diblok</span>
-    </button>
-
-    <div id="selectionReplaceResultsBox" class="hidden space-y-2">
-      <div id="selectionReplaceSummary" class="text-[11px] text-slate-600 font-semibold"></div>
-      <div id="selectionReplaceList" class="max-h-56 overflow-y-auto space-y-1.5 text-xs"></div>
       <button
-        id="btnExecuteSelectionReplace"
         type="button"
-        onclick="handleExecuteSelectionReplace()"
-        class="w-full py-2.5 px-3 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded shadow"
+        onclick="switchFeatureMode('replace-range')"
+        class="w-full py-2 px-3 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded shadow-sm flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
       >
-        <span>⚡ REPLACE RANGE TERSELEKSI (WARNA HIJAU)</span>
+        <span>🚀 Buka Menu 03: Replace Range Seleksi Sekarang</span>
       </button>
     </div>
   </section>

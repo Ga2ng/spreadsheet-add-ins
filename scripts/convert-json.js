@@ -368,20 +368,38 @@ ${presetEntries.join(",\n")}
 
   const ts = getTimestampSuffix();
 
-  // 1. Backup file DataPembanding.gs lama sebelum ditimpa
+  // 1. Backup file DataPembanding.gs lama sebelum ditimpa jika ada perubahan
   if (fs.existsSync(outGsPath)) {
-    const backupGsPath = path.join(historyDir, `DataPembanding_${ts}.gs`);
-    fs.copyFileSync(outGsPath, backupGsPath);
-    console.log(`📦 History backup: 02-data-pembanding/history/DataPembanding_${ts}.gs`);
+    const existingContent = fs.readFileSync(outGsPath, "utf8");
+    if (existingContent !== gsOutput) {
+      const backupGsPath = path.join(historyDir, `DataPembanding_${ts}.gs`);
+      fs.copyFileSync(outGsPath, backupGsPath);
+      console.log(`📦 History backup: 02-data-pembanding/history/DataPembanding_${ts}.gs`);
+    }
   }
 
-  // 2. Backup file JSON lama yang ada di folder sebelum ditimpa
-  for (const fp of allJsonInFolder) {
-    const baseName = path.basename(fp, ".json");
-    const backupJsonPath = path.join(historyDir, `${baseName}_${ts}.json`);
-    fs.copyFileSync(fp, backupJsonPath);
-    console.log(`📦 History backup: 02-data-pembanding/history/${baseName}_${ts}.json`);
+  // 2. Prune history: Sisakan maksimal 6 file backup saja di folder history
+  function pruneHistoryFiles(maxKeep = 6) {
+    if (!fs.existsSync(historyDir)) return;
+    const files = fs.readdirSync(historyDir).map((f) => {
+      const fp = path.join(historyDir, f);
+      return { name: f, path: fp, time: fs.statSync(fp).mtimeMs };
+    });
+    // Urutkan dari yang terbaru ke terlama
+    files.sort((a, b) => b.time - a.time);
+
+    if (files.length > maxKeep) {
+      const toDelete = files.slice(maxKeep);
+      toDelete.forEach((item) => {
+        try {
+          fs.unlinkSync(item.path);
+        } catch (e) {}
+      });
+      console.log(`🧹 Pruned history: Menghapus ${toDelete.length} file lama, menyisakan ${maxKeep} file terbaru.`);
+    }
   }
+
+  pruneHistoryFiles(6);
 
   fs.writeFileSync(outGsPath, gsOutput, "utf8");
 

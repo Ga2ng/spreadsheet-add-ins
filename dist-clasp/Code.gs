@@ -935,7 +935,7 @@ function updateDataPembandingFromLiveScan() {
     } catch (e) {}
 
     historyList.unshift(historyRecord);
-    if (historyList.length > 10) historyList = historyList.slice(0, 10);
+    if (historyList.length > 6) historyList = historyList.slice(0, 6);
 
     try {
       PropertiesService.getDocumentProperties().setProperty("DATA_PEMBANDING_HISTORY", JSON.stringify(historyList));
@@ -1390,7 +1390,7 @@ function updateCiamsoDataPembandingFromLiveScan(customSheetName) {
       categoryCount: scanRes.totalCategories,
       sourceSheet: scanRes.scannedSheetNames.join(", ")
     });
-    if (histList.length > 10) histList = histList.slice(0, 10);
+    if (histList.length > 6) histList = histList.slice(0, 6);
     docProps.setProperty("CIAMSO_HISTORY_LIST", JSON.stringify(histList));
   }
 
@@ -1731,6 +1731,81 @@ function replaceAllBahanInActiveSheet(payload) {
     sheetName: sheet.getName(),
     totalUpdated: updatedList.length,
     highlightColor: highlightColor,
+    updatedList: updatedList
+  };
+}
+
+/**
+ * ============================================================================
+ * FITUR 03: REPLACE RANGE SELEKSI (UNIVERSAL MANUAL DI SHEET AKTIF)
+ * ============================================================================
+ * Mengganti nilai sel pada range yang diblok di sheet yang sedang aktif.
+ * Berlaku umum untuk semua sheet dan jenis tabel tanpa auto-value paksaan.
+ * Mendukung input teks, angka, maupun formula, serta pewarnaan sel (#dcfce7).
+ *
+ * payload: {
+ *   highlightColor: string, // misal "#dcfce7" atau "" jika tanpa warna
+ *   applyHighlight: boolean, // default true
+ *   updates: [
+ *     { sheetRow: number, sheetCol: number, cellAddress: string, newValue: any, oldValue: any }
+ *   ]
+ * }
+ */
+function replaceGenericSelectedRange(payload) {
+  if (!payload || !Array.isArray(payload.updates) || payload.updates.length === 0) {
+    throw new Error("Tidak ada sel yang dipilih untuk di-replace.");
+  }
+
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  // Selalu targetkan sheet yang sedang dibuka/aktif saat ini
+  var sheet = ss.getActiveSheet();
+
+  var applyHighlight = payload.applyHighlight !== false;
+  var highlightColor = payload.highlightColor || "#dcfce7";
+  var updatedList = [];
+
+  for (var i = 0; i < payload.updates.length; i++) {
+    var u = payload.updates[i];
+    var row = Number(u.sheetRow);
+    var col = Number(u.sheetCol);
+    var rawVal = u.newValue;
+
+    if (row > 0 && col > 0 && rawVal !== undefined && rawVal !== null) {
+      var cell = sheet.getRange(row, col);
+      var strVal = String(rawVal).trim();
+
+      // Cek tipe nilai: Formula, Angka, atau Teks
+      if (strVal.indexOf("=") === 0) {
+        cell.setFormula(strVal);
+      } else {
+        // Cek jika angka murni (termasuk format angka Indonesia misal "15.000" atau "15000")
+        var num = parseCleanPrice_(strVal);
+        if (num !== null && !isNaN(num) && /^-?\d+(\.\d+)?$/.test(String(num)) && !/[a-zA-Z]/.test(strVal)) {
+          cell.setValue(num);
+        } else {
+          cell.setValue(rawVal);
+        }
+      }
+
+      if (applyHighlight && highlightColor) {
+        cell.setBackground(highlightColor);
+      }
+
+      updatedList.push({
+        row: row,
+        col: col,
+        cellAddress: u.cellAddress || (colNumberToLetter_(col) + row),
+        oldValue: u.oldValue,
+        newValue: rawVal
+      });
+    }
+  }
+
+  return {
+    success: true,
+    sheetName: sheet.getName(),
+    totalUpdated: updatedList.length,
+    highlightColor: applyHighlight ? highlightColor : null,
     updatedList: updatedList
   };
 }
