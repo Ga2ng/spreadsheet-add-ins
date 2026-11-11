@@ -49,7 +49,8 @@ Menu fitur dipecah modular ke dalam file HTML terpisah:
       >
         <option value="ciamso-pembanding" selected>05. Pembanding HPP Ciamso (Inventory Okt)</option>
         <option value="ciamso-replace">06. Replace Data (Replace All Bahan di Sheet)</option>
-        <option value="replace-range">03. Cari &amp; Ganti (Ctrl+F / Ctrl+H) di Seluruh Sheet</option>
+        <option value="hpp-central-parser">07. Parser HPP Central Kitchen (Oktober 26)</option>
+        <option value="replace-range">03. Replace All Berdasarkan Sel yang Diblok</option>
         <option value="hpp-audit">02. Pembanding HPP Central (2 Warna &amp; Auto Create Tabel)</option>
         <option value="scanner">04. Scanner Sheet (Central Storage &amp; Kitchen Live)</option>
         <option value="parser">01. Parser (Sheet Range → JSON)</option>
@@ -70,6 +71,7 @@ Menu fitur dipecah modular ke dalam file HTML terpisah:
       var viewScanner = document.getElementById("viewScanner");
       var viewCiamsoPem = document.getElementById("viewCiamsoPembanding");
       var viewReplaceData = document.getElementById("viewReplaceData");
+      var viewHppCentralParser = document.getElementById("viewHppCentralParser");
       var featureSelect = document.getElementById("featureSelect");
       var subtitle = document.getElementById("headerSubtitle");
 
@@ -83,13 +85,20 @@ Menu fitur dipecah modular ke dalam file HTML terpisah:
       if (viewScanner) viewScanner.classList.add("hidden");
       if (viewCiamsoPem) viewCiamsoPem.classList.add("hidden");
       if (viewReplaceData) viewReplaceData.classList.add("hidden");
+      if (viewHppCentralParser) viewHppCentralParser.classList.add("hidden");
 
       if (mode === "parser") {
         if (viewParser) viewParser.classList.remove("hidden");
         if (subtitle) subtitle.textContent = "Mode: 01. Parser (Sheet Range → JSON)";
+      } else if (mode === "hpp-central-parser") {
+        if (viewHppCentralParser) viewHppCentralParser.classList.remove("hidden");
+        if (subtitle) subtitle.textContent = "Mode: 07. Parser HPP Central Kitchen (Oktober 26)";
+        if (typeof initHppCentralParserView === "function") {
+          initHppCentralParserView();
+        }
       } else if (mode === "replace-range" || mode === "replace-hpp") {
         if (viewReplace) viewReplace.classList.remove("hidden");
-        if (subtitle) subtitle.textContent = "Mode: 03. Cari & Ganti (Ctrl+F / Ctrl+H) di Seluruh Sheet";
+        if (subtitle) subtitle.textContent = "Mode: 03. Replace All Berdasarkan Sel yang Diblok";
         if (typeof initReplaceHppView === "function") {
           initReplaceHppView();
         }
@@ -220,13 +229,16 @@ Menu fitur dipecah modular ke dalam file HTML terpisah:
     <!-- MENU 06: REPLACE DATA (REPLACE ALL BAHAN SHEET) (VIEW TERPISAH) -->
     <?!= include('ReplaceDataView'); ?>
 
+    <!-- MENU 07: PARSER HPP CENTRAL KITCHEN (VIEW TERPISAH) -->
+    <?!= include('HppCentralParserView'); ?>
+
     <!-- MENU 01: PARSER SHEET RANGE -> JSON (VIEW TERPISAH) -->
     <?!= include('ParserView'); ?>
 
   </main>
 
   <footer class="py-2 px-3 text-center text-[11px] text-slate-400 border-t border-slate-200 bg-white">
-    Audit Data Tools • Modular Edition (01. Parser • 02. Pembanding Central • 03. Replace Range • 04. Scanner Central • 05. Ciamso HPP • 06. Replace Data)
+    Audit Data Tools • Modular Edition (01. Parser • 02. Pembanding Central • 03. Replace Range • 04. Scanner Central • 05. Ciamso HPP • 06. Replace Data • 07. Parser Central)
   </footer>
 
   <script>
@@ -235,24 +247,14 @@ Menu fitur dipecah modular ke dalam file HTML terpisah:
         initReferenceJsonPresets();
       }
 
-      // Shortcut Global: Ctrl+F & Ctrl+H membuka menu Cari & Ganti
+      // Shortcut Global: Ctrl+F & Ctrl+H membuka menu Replace Berdasarkan Sel yang Diblok
       document.addEventListener("keydown", function (e) {
-        if ((e.ctrlKey || e.metaKey) && (e.key === "f" || e.key === "F")) {
+        if ((e.ctrlKey || e.metaKey) && (e.key === "f" || e.key === "F" || e.key === "h" || e.key === "H")) {
           e.preventDefault();
           switchFeatureMode("replace-range");
-          if (typeof switchReplaceModeTab === "function") switchReplaceModeTab("ctrlh");
-          setTimeout(function() {
-            var fInput = document.getElementById("inputCtrlFFind");
-            if (fInput) { fInput.focus(); fInput.select(); }
-          }, 100);
-        } else if ((e.ctrlKey || e.metaKey) && (e.key === "h" || e.key === "H")) {
-          e.preventDefault();
-          switchFeatureMode("replace-range");
-          if (typeof switchReplaceModeTab === "function") switchReplaceModeTab("ctrlh");
-          setTimeout(function() {
-            var rInput = document.getElementById("inputCtrlHReplace");
-            if (rInput) { rInput.focus(); rInput.select(); }
-          }, 100);
+          if (typeof handleReadBlockedCell === "function") {
+            handleReadBlockedCell();
+          }
         }
       });
     });

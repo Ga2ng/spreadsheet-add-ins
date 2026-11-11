@@ -103,7 +103,7 @@ function getAvailableReferenceJsonPresets() {
       if (hasKitchen || hasStorage) {
         var scanRes = scanCentralSheetsDirectly();
         if (scanRes && scanRes.datasets && scanRes.datasets.length > 0) {
-          return scanRes.datasets.map(function (ds) {
+          var mappedDatasets = scanRes.datasets.map(function (ds) {
             var isKitchen = ds.kategori.indexOf("KITCHEN") !== -1;
             return {
               id: isKitchen ? "inv-central-kitchen" : "inv-central-storage",
@@ -114,6 +114,16 @@ function getAvailableReferenceJsonPresets() {
               data: ds.items
             };
           });
+
+          // Integrasi slot dinamis Data Inventory Outlet jika tersedia
+          if (typeof getInventoryOutletDatasetForMenu02 === "function") {
+            var outletDs = getInventoryOutletDatasetForMenu02();
+            if (outletDs) {
+              mappedDatasets.push(outletDs);
+            }
+          }
+
+          return mappedDatasets;
         }
       }
     }
@@ -2019,5 +2029,133 @@ function replaceDataInSheet(params) {
     totalUpdated: updatedCount,
     highlightColor: applyHighlight ? highlightColor : null,
     updatedList: updatedList
+  };
+}
+
+/**
+ * ============================================================================
+ * SCAN SEMUA BARIS YANG COCOK DENGAN SEL YANG DIBLOK (MENU 03 INTEGRATED)
+ * ============================================================================
+ * Membaca data acuan dari sel/baris yang diblok, lalu mencari seluruh baris
+ * di sheet aktif yang memiliki data sama, dan menyiapkan sel pada kolom target
+ * yang dipilih pengguna untuk di-replace secara massal.
+ */
+function findMatchingRowsFromSelectedCell(params) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getActiveSheet();
+  var range = sheet.getDataRange();
+  if (!range) {
+    return { success: true, sheetName: sheet.getName(), matches: [], columns: [] };
+  }
+
+  var numRows = range.getNumRows();
+  var numCols = range.getNumColumns();
+  var rawVals = range.getValues();
+  var dispVals = range.getDisplayValues();
+
+  // Dapatkan daftar kolom dan nama header otomatis
+  var columns = [];
+  for (var c = 0; c < numCols; c++) {
+    var colLetter = colNumberToLetter_(c + 1);
+    var headerName = "";
+    for (var rHead = 0; rHead < Math.min(5, numRows); rHead++) {
+      var hCandidate = String(dispVals[rHead][c] || "").trim();
+      if (hCandidate && !/^\d+$/.test(hCandidate) && !/^(total|subtotal)$/i.test(hCandidate)) {
+        headerName = hCandidate;
+        break;
+      }
+    }
+    columns.push({
+      colIndex: c,
+      colNumber: c + 1,
+      colLetter: colLetter,
+      headerName: headerName,
+      label: "Kolom " + colLetter + (headerName ? " (" + headerName + ")" : "")
+    });
+  }
+
+  var searchKey = String(params.searchKeyword || "").trim();
+  if (!searchKey) {
+    return { success: true, sheetName: sheet.getName(), matches: [], columns: columns };
+  }
+
+  var searchLower = searchKey.toLowerCase();
+  var matchCase = !!params.matchCase;
+  var matchExact = params.matchExact !== false; // default true untuk kecocokan kata/sel
+  var targetCol = (params.targetColIndex !== undefined && params.targetColIndex !== null) ? Number(params.targetColIndex) : null;
+  var matchCol = (params.matchColIndex !== undefined && params.matchColIndex !== null) ? Number(params.matchColIndex) : null;
+  var newVal = params.newValue !== undefined ? params.newValue : "";
+
+  var matches = [];
+
+  for (var r = 0; r < numRows; r++) {
+    // Dapatkan konteks resep/baris (kolom teks pertama bukan angka)
+    var rowContext = "";
+    for (var cIdx = 0; cIdx < Math.min(4, numCols); cIdx++) {
+      var valC = String(dispVals[r][cIdx] || "").trim();
+      if (valC && !/^\d+$/.test(valC) && !/^(total|subtotal|hpp|selling|grand\s*total)/i.test(valC)) {
+        rowContext = valC;
+        break;
+      }
+    }
+    if (!rowContext) rowContext = "Baris " + (r + 1);
+
+    var isRowMatch = false;
+    var foundInCol = -1;
+
+    if (matchCol !== null && matchCol >= 0 && matchCol < numCols) {
+      var cellVal = String(dispVals[r][matchCol] || "").trim();
+      var cCompare = matchCase ? cellVal : cellVal.toLowerCase();
+      var sCompare = matchCase ? searchKey : searchLower;
+      if (matchExact ? (cCompare === sCompare) : (cCompare.indexOf(sCompare) !== -1)) {
+        isRowMatch = true;
+        foundInCol = matchCol;
+      }
+    } else {
+      for (var c = 0; c < numCols; c++) {
+        var cellVal = String(dispVals[r][c] || "").trim();
+        if (!cellVal) continue;
+        var cCompare = matchCase ? cellVal : cellVal.toLowerCase();
+        var sCompare = matchCase ? searchKey : searchLower;
+        if (matchExact ? (cCompare === sCompare) : (cCompare.indexOf(sCompare) !== -1)) {
+          isRowMatch = true;
+          foundInCol = c;
+          break;
+        }
+      }
+    }
+
+    if (isRowMatch) {
+      // Tentukan kolom target yang akan diganti nilainya
+      var replaceColIdx = (targetCol !== null && targetCol >= 0 && targetCol < numCols) ? targetCol : foundInCol;
+
+      var sheetRow = r + 1;
+      var sheetCol = replaceColIdx + 1;
+      var cellAddr = colNumberToLetter_(sheetCol) + sheetRow;
+      var currentCellVal = rawVals[r][replaceColIdx];
+      var currentDispVal = dispVals[r][replaceColIdx];
+
+      matches.push({
+        sheetName: sheet.getName(),
+        sheetRow: sheetRow,
+        sheetCol: sheetCol,
+        cellAddress: cellAddr,
+        rowContext: rowContext,
+        targetColName: columns[replaceColIdx] ? columns[replaceColIdx].label : ("Kolom " + colNumberToLetter_(sheetCol)),
+        oldValue: currentCellVal !== null && currentCellVal !== undefined ? currentCellVal : currentDispVal,
+        displayValue: currentDispVal,
+        newValue: newVal,
+        isChecked: true
+      });
+    }
+  }
+
+  return {
+    success: true,
+    sheetName: sheet.getName(),
+    totalMatches: matches.length,
+    searchKeyword: searchKey,
+    columns: columns,
+    matches: matches
   };
 }

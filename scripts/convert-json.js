@@ -355,9 +355,19 @@ ${gsDatasetBlocks.join("\n\n")}
  * (Mendukung Multi-Select: bisa centang 1 atau lebih dari 1 dataset sekaligus).
  */
 function getBuiltInReferenceDatasets() {
-  return [
+  var list = [
 ${presetEntries.join(",\n")}
   ];
+
+  // Integrasi slot dinamis Data Inventory Outlet jika tersedia
+  if (typeof getInventoryOutletDatasetForMenu02 === "function") {
+    var outletDs = getInventoryOutletDatasetForMenu02();
+    if (outletDs) {
+      list.push(outletDs);
+    }
+  }
+
+  return list;
 }
 `;
 
@@ -441,7 +451,11 @@ ${parsedDatasets
   const syncPairs = [
     { src: "00-manifest/appsscript.json", dest: "appsscript.json" },
     { src: "01-code-backend/Code.gs", dest: "Code.gs" },
+    { src: "01-code-backend/HppCentralParser.gs", dest: "HppCentralParser.gs" },
+    { src: "01-code-backend/HppCentralOktData.gs", dest: "HppCentralOktData.gs" },
+    { src: "01-code-backend/InventoryOutletParser.gs", dest: "InventoryOutletParser.gs" },
     { src: "02-data-pembanding/DataPembanding.gs", dest: "DataPembanding.gs" },
+    { src: "02-data-pembanding/DataInventoryOutlet.gs", dest: "DataInventoryOutlet.gs" },
     { src: "03-sidebar-ui/Sidebar.html", dest: "Sidebar.html" },
     { src: "03-sidebar-ui/PembandingView.html", dest: "PembandingView.html" },
     { src: "03-sidebar-ui/ReplaceHppView.html", dest: "ReplaceHppView.html" },
@@ -449,6 +463,7 @@ ${parsedDatasets
     { src: "03-sidebar-ui/CiamsoScannerView.html", dest: "CiamsoScannerView.html" },
     { src: "03-sidebar-ui/CiamsoPembandingView.html", dest: "CiamsoPembandingView.html" },
     { src: "03-sidebar-ui/ReplaceDataView.html", dest: "ReplaceDataView.html" },
+    { src: "03-sidebar-ui/HppCentralParserView.html", dest: "HppCentralParserView.html" },
     { src: "03-sidebar-ui/ParserView.html", dest: "ParserView.html" }
   ];
 

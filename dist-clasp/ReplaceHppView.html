@@ -1,353 +1,182 @@
 <!--
 ===============================================================================
-MENU 03: REPLACE RANGE & FIND & REPLACE (ReplaceHppView.html)
+MENU 03: REPLACE DATA BERDASARKAN SEL YANG DIBLOK (ReplaceHppView.html)
 ===============================================================================
-Fitur:
-1. Mode 1: Cari & Ganti Seluruh Sheet (Ctrl+F / Ctrl+H):
-   - Mencari dan mengganti data di SELURUH sheet yang sedang dibuka tanpa perlu blok manual.
-   - Pilihan Scope: Sheet Aktif yang Terbuka ATAU Seluruh Tab Sheet di Spreadsheet.
-   - Opsi: Exact Match (seluruh sel), Match Case, dan Highlight Hijau (#dcfce7).
-   - Pratinjau hasil pencarian interaktif dengan checkbox per sel dan input nilai baru yang bisa diedit.
-2. Mode 2: Range Seleksi Manual (Range yang Sedang Diblok):
-   - Membaca range yang sedang diblok di sheet aktif, edit manual per baris, bulk set, atau find & replace di range seleksi.
+Alur Kerja:
+1. User blok sel di Google Sheets (misal: "ayam grill" atau baris bahan).
+2. Klik tombol "1. Baca Sel yang Sedang Diblok":
+   - Sistem membaca isi sel acuan tersebut.
+   - Otomatis mencari seluruh baris di sheet aktif yang memiliki data yang SAMA.
+   - Melaporkan jumlah data yang sama ditemukan di seluruh sheet.
+3. User memilih:
+   - Kolom mana yang ingin diganti (dropdown otomatis membaca nama kolom di sheet).
+   - Nilai baru penggantinya (angka / teks).
+4. Klik tombol "⚡ REPLACE ALL":
+   - Mengganti seluruh sel target yang sama di sheet dalam 1 klik.
+   - Mewarnai seluruh sel yang diganti dengan warna hijau muda (#dcfce7).
 ===============================================================================
 -->
-<div id="viewReplaceHpp" class="hidden space-y-3">
+<div id="viewReplaceHpp" class="space-y-3">
 
-  <!-- TAB NAVIGASI MODE 1 VS MODE 2 -->
-  <section class="bg-white rounded-lg border border-slate-200 p-2.5 shadow-sm space-y-2">
-    <div class="flex items-center justify-between border-b border-slate-200 pb-2">
+  <!-- STEP 1: BACA SEL YANG SEDANG DIBLOK -->
+  <section class="bg-white rounded-lg border border-slate-200 p-3.5 shadow-sm space-y-2.5">
+    <div class="flex items-start justify-between gap-2">
       <div>
         <h2 class="text-xs font-bold uppercase tracking-wider text-emerald-800">
-          03. Replace Data &amp; Find (Ctrl+F / Ctrl+H)
+          03. Replace All Berdasarkan Sel yang Diblok
         </h2>
-        <p class="text-[10px] text-slate-500">
-          Cari &amp; ganti data di seluruh sheet yang terbuka atau pada range yang diblok.
+        <p class="text-[11px] text-slate-500">
+          Blok sel di sheet → sistem mencari semua data yang sama di sheet → pilih kolom yang diganti → Replace All warna hijau.
         </p>
       </div>
-      <div class="flex items-center gap-1 shrink-0">
-        <span class="text-[9px] font-mono bg-slate-100 text-slate-600 px-1 py-0.5 rounded border border-slate-200">Ctrl+F</span>
-        <span class="text-[9px] font-mono bg-slate-100 text-slate-600 px-1 py-0.5 rounded border border-slate-200">Ctrl+H</span>
-      </div>
+      <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 shrink-0">
+        Sheet Aktif
+      </span>
     </div>
 
-    <div class="flex gap-1 text-[11px] font-bold">
-      <button
-        id="tabBtnModeCtrlH"
-        type="button"
-        onclick="switchReplaceModeTab('ctrlh')"
-        class="flex-1 py-1.5 px-2 text-center rounded border-b-2 border-emerald-600 text-emerald-800 bg-emerald-50/60 transition-colors"
-      >
-        🔍 Cari &amp; Ganti Seluruh Sheet
-      </button>
-      <button
-        id="tabBtnModeRangeSel"
-        type="button"
-        onclick="switchReplaceModeTab('range')"
-        class="flex-1 py-1.5 px-2 text-center rounded border-b-2 border-transparent text-slate-500 hover:text-slate-800 transition-colors"
-      >
-        📐 Range yang Diblok
-      </button>
-    </div>
+    <!-- TOMBOL 1: BACA SEL YANG DIBLOK -->
+    <button
+      id="btnReadBlockedCell"
+      type="button"
+      onclick="handleReadBlockedCell()"
+      class="w-full py-2.5 px-3 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-xs font-bold rounded shadow flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+    >
+      <span>🔍 1. Baca Sel yang Sedang Diblok di Sheet</span>
+    </button>
   </section>
 
-  <!-- ===================================================================== -->
-  <!-- MODE 1: CARI & GANTI SELURUH SHEET (CTRL+F / CTRL+H)                  -->
-  <!-- ===================================================================== -->
-  <div id="panelCtrlHMode" class="space-y-3">
+  <!-- STEP 2 & 3: PENGATURAN DATA ACUAN & KOLOM PENGGANTI (MUNCUL SETELAH DIBACA) -->
+  <div id="blockedCellDetailsBox" class="hidden space-y-3">
 
+    <!-- INFO DATA ACUAN DARI SEL YANG DIBLOK -->
     <section class="bg-white rounded-lg border border-slate-200 p-3.5 shadow-sm space-y-3">
-      <div class="flex items-center justify-between">
-        <span class="text-[11px] font-bold text-slate-800 uppercase tracking-wide">
-          1. Parameter Pencarian &amp; Penggantian
+      <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+        <span class="text-[11px] font-bold uppercase tracking-wide text-slate-700">
+          2. Data Acuan yang Sedang Diblok:
         </span>
-        <span class="text-[10px] text-emerald-700 font-semibold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-          Seluruh Sheet Terbuka
+        <span id="lblBlockedRangeAddr" class="font-mono text-[10px] font-bold bg-slate-100 text-slate-700 px-2 py-0.5 rounded border border-slate-200">
+          -
         </span>
       </div>
 
-      <!-- INPUT CARI (FIND) -->
-      <div class="space-y-1">
-        <label for="inputCtrlFFind" class="block text-[11px] font-bold text-slate-700 flex items-center justify-between">
-          <span>🔍 Cari Data (Find):</span>
-          <span class="text-[10px] text-slate-400 font-normal">Tekan Enter untuk cari</span>
-        </label>
-        <input
-          id="inputCtrlFFind"
-          type="text"
-          placeholder="Ketik teks / angka yang dicari (misal: Beras, 13814, Ayam)..."
-          onkeydown="if(event.key==='Enter') handleExecuteFindAll();"
-          class="w-full px-2.5 py-1.5 text-xs border border-slate-300 rounded font-semibold text-slate-800 bg-white focus:ring-1 focus:ring-emerald-500 shadow-sm"
-        />
-      </div>
-
-      <!-- INPUT GANTI DENGAN (REPLACE) -->
-      <div class="space-y-1">
-        <label for="inputCtrlHReplace" class="block text-[11px] font-bold text-emerald-800">
-          ⚡ Ganti Menjadi (Replace with):
-        </label>
-        <input
-          id="inputCtrlHReplace"
-          type="text"
-          placeholder="Ketik nilai pengganti (teks, angka, atau formula)..."
-          onkeydown="if(event.key==='Enter') handleExecuteFindAll();"
-          class="w-full px-2.5 py-1.5 text-xs border border-emerald-400 rounded font-bold text-emerald-900 bg-white focus:ring-1 focus:ring-emerald-500 shadow-sm"
-        />
-      </div>
-
-      <!-- PILIHAN SCOPE -->
-      <div class="space-y-1 pt-1 border-t border-slate-100">
-        <label class="block text-[10px] font-bold text-slate-600 uppercase">Lingkup Pencarian (Scope):</label>
-        <div class="grid grid-cols-2 gap-2 text-[11px]">
-          <label class="flex items-center gap-1.5 p-1.5 border border-slate-200 rounded cursor-pointer hover:bg-slate-50 bg-white">
-            <input type="radio" name="ctrlHScope" value="active" checked class="text-emerald-600 focus:ring-emerald-500">
-            <span class="font-semibold text-slate-700">Sheet Aktif Terbuka</span>
-          </label>
-          <label class="flex items-center gap-1.5 p-1.5 border border-slate-200 rounded cursor-pointer hover:bg-slate-50 bg-white">
-            <input type="radio" name="ctrlHScope" value="all_sheets" class="text-emerald-600 focus:ring-emerald-500">
-            <span class="text-slate-600">Semua Tab Sheet</span>
-          </label>
+      <!-- NILAI DATA ACUAN -->
+      <div class="bg-emerald-50/70 border border-emerald-200 rounded-md p-2.5 space-y-1.5">
+        <div class="flex items-center justify-between text-xs">
+          <span class="text-slate-500 text-[11px]">Data yang Dicari di Sheet:</span>
+          <span id="lblBlockedMatchCount" class="font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded border border-emerald-300 text-[11px]">
+            Memuat...
+          </span>
         </div>
+        <div class="flex items-center gap-2">
+          <input
+            id="inputBlockedKeyword"
+            type="text"
+            oninput="handleBlockedKeywordManualChange(this.value)"
+            class="flex-1 font-mono font-bold text-xs text-emerald-950 bg-white border border-emerald-300 rounded px-2.5 py-1.5 shadow-sm focus:ring-1 focus:ring-emerald-500"
+            title="Data acuan yang dicari di sheet"
+          />
+          <button
+            type="button"
+            onclick="handleReScanMatches()"
+            class="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold rounded shadow-sm shrink-0"
+            title="Scan ulang kecocokan di sheet"
+          >
+            Scan Ulang
+          </button>
+        </div>
+        <!-- Pilihan jika yang diblok berupa baris beberapa kolom -->
+        <div id="blockedMultiCellsContainer" class="hidden pt-1 border-t border-emerald-200/60 flex flex-wrap gap-1"></div>
       </div>
 
-      <!-- OPSI PENCARIAN -->
+      <!-- PILIH KOLOM MANA YANG INGIN DIGANTI -->
+      <div class="space-y-1">
+        <label for="selectTargetColToReplace" class="block text-[11px] font-bold text-slate-700">
+          🎯 Pilih Kolom Mana yang Ingin Diganti:
+        </label>
+        <select
+          id="selectTargetColToReplace"
+          onchange="handleSelectTargetColChange(this.value)"
+          class="w-full text-xs font-bold border border-slate-300 rounded px-2.5 py-1.5 bg-white text-slate-800 focus:ring-1 focus:ring-emerald-500 cursor-pointer shadow-sm"
+        >
+          <option value="">Memuat kolom sheet...</option>
+        </select>
+        <p class="text-[10px] text-slate-500">
+          Sistem otomatis mengganti nilai pada kolom ini untuk seluruh baris yang sama dengan data di atas.
+        </p>
+      </div>
+
+      <!-- NILAI BARU PENGGANTI -->
+      <div class="space-y-1">
+        <label for="inputBlockedNewValue" class="block text-[11px] font-bold text-emerald-800">
+          ⚡ Nilai Baru Pengganti:
+        </label>
+        <input
+          id="inputBlockedNewValue"
+          type="text"
+          placeholder="Ketik nilai baru (angka / teks / formula)..."
+          oninput="handleBlockedNewValueChange(this.value)"
+          class="w-full px-2.5 py-1.5 text-xs font-bold text-emerald-900 bg-white border border-emerald-400 rounded focus:ring-1 focus:ring-emerald-500 shadow-sm"
+        />
+      </div>
+
+      <!-- OPSI MATCH EXACT & WARNA HIJAU -->
       <div class="space-y-1.5 pt-1 border-t border-slate-100 text-[11px]">
         <label class="flex items-center gap-2 cursor-pointer select-none">
-          <input id="chkCtrlHExactMatch" type="checkbox" class="rounded text-emerald-600 focus:ring-emerald-500 w-3.5 h-3.5">
-          <span class="text-slate-700">Cocokkan Seluruh Sel (Exact Match)</span>
-        </label>
-        <label class="flex items-center gap-2 cursor-pointer select-none">
-          <input id="chkCtrlHMatchCase" type="checkbox" class="rounded text-emerald-600 focus:ring-emerald-500 w-3.5 h-3.5">
-          <span class="text-slate-700">Peka Huruf Besar / Kecil (Match Case)</span>
-        </label>
-        <label class="flex items-center gap-2 cursor-pointer select-none">
-          <input id="chkCtrlHHighlightGreen" type="checkbox" checked class="rounded text-emerald-600 focus:ring-emerald-500 w-3.5 h-3.5">
-          <span class="text-slate-700 font-semibold text-emerald-800">Beri warna Hijau Muda (#dcfce7) pada sel yang diubah</span>
-        </label>
-      </div>
-
-      <!-- TOMBOL CARI & GANTI LANGSUNG -->
-      <div class="grid grid-cols-2 gap-2 pt-1">
-        <button
-          id="btnCtrlHFindAll"
-          type="button"
-          onclick="handleExecuteFindAll()"
-          class="py-2 px-2.5 bg-slate-800 hover:bg-slate-900 active:bg-black text-white text-xs font-bold rounded shadow flex items-center justify-center gap-1 transition-colors cursor-pointer"
-        >
-          <span>🔍 1. Cari Data (Find)</span>
-        </button>
-        <button
-          id="btnCtrlHQuickReplaceAll"
-          type="button"
-          onclick="handleExecuteQuickReplaceAllDirect()"
-          class="py-2 px-2.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-xs font-bold rounded shadow flex items-center justify-center gap-1 transition-colors cursor-pointer"
-        >
-          <span>⚡ Ganti Semua Langsung</span>
-        </button>
-      </div>
-    </section>
-
-    <!-- HASIL PENCARIAN CTRL+F & CTRL+H -->
-    <div id="ctrlHResultsBox" class="hidden space-y-2.5">
-      <section class="bg-white rounded-lg border border-slate-200 p-3 shadow-sm space-y-2">
-        <div class="flex items-center justify-between text-xs pb-1.5 border-b border-slate-100">
-          <div>
-            <span class="font-bold text-slate-800" id="lblCtrlHTotalMatches">0 Hasil Ditemukan</span>
-            <div class="text-[10px] text-slate-500" id="lblCtrlHSearchContext">-</div>
-          </div>
-          <div class="flex items-center gap-1.5 text-[10px]">
-            <button type="button" onclick="handleToggleAllCtrlHMatches(true)" class="text-emerald-700 hover:underline font-bold">Pilih Semua</button>
-            <span class="text-slate-300">|</span>
-            <button type="button" onclick="handleToggleAllCtrlHMatches(false)" class="text-slate-500 hover:underline font-bold">Batal</button>
-          </div>
-        </div>
-
-        <!-- DAFTAR KECOCOKAN SEL -->
-        <div id="ctrlHMatchesListContainer" class="max-h-72 overflow-y-auto border border-slate-200 rounded divide-y divide-slate-100 text-xs bg-white">
-          <!-- Render hasil kecocokan -->
-        </div>
-
-        <!-- TOMBOL EKSEKUSI GANTI ITEM TERPILIH -->
-        <button
-          id="btnCtrlHExecuteChecked"
-          type="button"
-          onclick="handleExecuteReplaceCheckedMatches()"
-          class="w-full py-2.5 px-3 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-xs font-bold rounded shadow flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-        >
-          <span>⚡ TERAPKAN GANTI PADA SEL TERPILIH (WARNA HIJAU)</span>
-        </button>
-      </section>
-    </div>
-
-  </div>
-
-  <!-- ===================================================================== -->
-  <!-- MODE 2: RANGE SELEKSI MANUAL (RANGE YANG SEDANG DIBLOK DI SHEET)     -->
-  <!-- ===================================================================== -->
-  <div id="panelRangeSelMode" class="hidden space-y-3">
-
-    <!-- STEP 1: INFO FITUR RANGE DIBLOK -->
-    <section class="bg-white rounded-lg border border-slate-200 p-3.5 shadow-sm space-y-2">
-      <div class="flex items-start justify-between gap-2">
-        <div>
-          <h3 class="text-xs font-bold uppercase tracking-wider text-emerald-800">
-            Range yang Sedang Diblok
-          </h3>
-          <p class="text-[11px] text-slate-500">
-            Blok range tertentu di sheet aktif, lalu sesuaikan nilainya tanpa auto-value paksaan.
-          </p>
-        </div>
-        <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 shrink-0">
-          Sheet Aktif
-        </span>
-      </div>
-
-      <!-- TOMBOL BACA RANGE SELEKSI -->
-      <button
-        id="btnReadGenericSelection"
-        type="button"
-        onclick="handleReadGenericSelection()"
-        class="w-full py-2.5 px-3 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-xs font-bold rounded shadow flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-      >
-        <span>🔍 1. Baca Range yang Sedang Diblok di Sheet Aktif</span>
-      </button>
-    </section>
-
-    <!-- HASIL BACA RANGE -->
-    <div id="genericRangeResultsBox" class="hidden space-y-3">
-      <!-- INFO RANGE TERCATAT -->
-      <section class="bg-white rounded-lg border border-slate-200 p-3 shadow-sm space-y-2">
-        <div class="flex items-center justify-between text-xs">
-          <div>
-            <span class="text-slate-500 text-[10px] uppercase font-bold tracking-wider">Sheet:</span>
-            <span id="lblGenSheetName" class="font-bold text-slate-800 ml-1">-</span>
-          </div>
-          <div class="text-right">
-            <span class="text-slate-500 text-[10px] uppercase font-bold tracking-wider">Range:</span>
-            <span id="lblGenRangeAddress" class="font-mono font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 ml-1">-</span>
-          </div>
-        </div>
-        <div class="text-[11px] text-slate-600 flex items-center justify-between border-t border-slate-100 pt-1.5">
-          <span id="lblGenDimensions">-</span>
-          <span id="lblGenTotalCells" class="font-semibold text-slate-700">-</span>
-        </div>
-      </section>
-
-      <!-- PENGATURAN NILAI RANGE -->
-      <section class="bg-white rounded-lg border border-slate-200 p-3.5 shadow-sm space-y-3">
-        <div>
-          <label for="selectGenTargetCol" class="block text-[11px] font-bold text-slate-700 mb-1">
-            Pilih Kolom yang Ingin Di-Replace:
-          </label>
-          <select
-            id="selectGenTargetCol"
-            onchange="handleGenTargetColChange(this.value)"
-            class="w-full text-xs font-semibold border border-slate-300 rounded px-2.5 py-1.5 bg-white text-slate-800 focus:ring-1 focus:ring-emerald-500 cursor-pointer shadow-sm"
-          >
-            <option value="ALL">Semua Kolom di Range Seleksi</option>
-          </select>
-        </div>
-
-        <!-- QUICK BULK SET TOOLS -->
-        <details class="border border-slate-200 rounded-md p-2 bg-slate-50/70 text-xs">
-          <summary class="font-bold text-slate-700 cursor-pointer hover:text-emerald-700 select-none flex items-center justify-between">
-            <span>🛠️ Alat Bantu Cepat (Isi Serentak / Cari &amp; Ganti di Range)</span>
-            <span class="text-[10px] text-slate-400 font-normal">Klik buka</span>
-          </summary>
-          
-          <div class="mt-2.5 space-y-2.5 pt-2 border-t border-slate-200">
-            <div class="space-y-1">
-              <label class="block text-[10px] font-bold text-slate-600">A. Isi Nilai Serentak ke Semua Baris Terpilih:</label>
-              <div class="flex gap-1.5">
-                <input
-                  id="inputGenBulkValue"
-                  type="text"
-                  placeholder="Ketik nilai baru..."
-                  class="flex-1 px-2 py-1 text-xs border border-slate-300 rounded bg-white focus:ring-1 focus:ring-emerald-500"
-                />
-                <button
-                  type="button"
-                  onclick="handleApplyGenBulkValue()"
-                  class="px-2.5 py-1 bg-slate-700 hover:bg-slate-800 text-white text-[11px] font-bold rounded shadow-sm shrink-0"
-                >
-                  Terapkan
-                </button>
-              </div>
-            </div>
-
-            <div class="space-y-1">
-              <label class="block text-[10px] font-bold text-slate-600">B. Cari &amp; Ganti (Find &amp; Replace) di Range:</label>
-              <div class="grid grid-cols-2 gap-1.5">
-                <input
-                  id="inputGenFindText"
-                  type="text"
-                  placeholder="Teks dicari..."
-                  class="px-2 py-1 text-xs border border-slate-300 rounded bg-white"
-                />
-                <input
-                  id="inputGenReplaceText"
-                  type="text"
-                  placeholder="Ganti jadi..."
-                  class="px-2 py-1 text-xs border border-slate-300 rounded bg-white"
-                />
-              </div>
-              <button
-                type="button"
-                onclick="handleApplyGenFindReplace()"
-                class="w-full py-1 bg-slate-600 hover:bg-slate-700 text-white text-[11px] font-bold rounded shadow-sm"
-              >
-                Ganti di Range
-              </button>
-            </div>
-          </div>
-        </details>
-
-        <!-- TABEL LIST -->
-        <div class="space-y-1.5">
-          <div class="flex items-center justify-between text-[11px] bg-slate-100 px-2 py-1.5 rounded border border-slate-200">
-            <span id="lblGenCheckedCount" class="font-bold text-slate-700">0 Baris Terpilih</span>
-            <div class="flex items-center gap-2 text-[10px]">
-              <button type="button" onclick="handleToggleAllGenCheckboxes(true)" class="text-emerald-700 hover:underline font-bold">Pilih Semua</button>
-              <span class="text-slate-300">|</span>
-              <button type="button" onclick="handleToggleAllGenCheckboxes(false)" class="text-slate-500 hover:underline font-bold">Batal</button>
-              <span class="text-slate-300">|</span>
-              <button type="button" onclick="handleResetAllGenValues()" class="text-rose-600 hover:underline font-semibold">Reset</button>
-            </div>
-          </div>
-
-          <div
-            id="genCellsListContainer"
-            class="max-h-72 overflow-y-auto border border-slate-200 rounded divide-y divide-slate-100 bg-white"
-          >
-            <!-- Diisi dinamis -->
-          </div>
-        </div>
-      </section>
-
-      <!-- EKSEKUSI RANGE SELEKSI -->
-      <section class="bg-white rounded-lg border border-slate-200 p-3.5 shadow-sm space-y-3">
-        <label class="flex items-center gap-2 cursor-pointer text-xs select-none">
           <input
-            id="chkGenApplyGreen"
+            id="chkBlockedMatchExact"
             type="checkbox"
             checked
-            class="rounded text-emerald-600 focus:ring-emerald-500 w-4 h-4"
+            onchange="handleReScanMatches()"
+            class="rounded text-emerald-600 focus:ring-emerald-500 w-3.5 h-3.5"
           />
-          <span class="text-slate-700 font-medium">
-            Beri warna <b class="text-emerald-800 bg-emerald-100 px-1 py-0.5 rounded border border-emerald-300">Hijau Muda (#dcfce7)</b> pada sel yang diubah
+          <span class="text-slate-700">Cocokkan Seluruh Isi Sel (Exact Match)</span>
+        </label>
+        <label class="flex items-center gap-2 cursor-pointer select-none">
+          <input
+            id="chkBlockedApplyGreen"
+            type="checkbox"
+            checked
+            class="rounded text-emerald-600 focus:ring-emerald-500 w-3.5 h-3.5"
+          />
+          <span class="text-slate-700 font-semibold text-emerald-800">
+            Beri warna latar <b class="bg-emerald-100 px-1 py-0.5 rounded border border-emerald-300">Hijau Muda (#dcfce7)</b> pada sel yang diubah
           </span>
         </label>
+      </div>
+    </section>
 
-        <button
-          id="btnExecuteGenericReplace"
-          type="button"
-          onclick="handleExecuteGenericReplace()"
-          class="w-full py-2.5 px-3 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-xs font-bold rounded shadow flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-        >
-          <span>⚡ 2. TERAPKAN PERUBAHAN KE SHEET AKTIF</span>
-        </button>
-      </section>
-    </div>
+    <!-- STEP 3: PRATINJAU SELURUH DATA YANG SAMA DI SHEET -->
+    <section class="bg-white rounded-lg border border-slate-200 p-3.5 shadow-sm space-y-2.5">
+      <div class="flex items-center justify-between text-xs pb-1.5 border-b border-slate-100">
+        <div>
+          <span class="font-bold text-slate-800" id="lblBlockedPreviewHeader">0 Baris Terpilih</span>
+          <div class="text-[10px] text-slate-500" id="lblBlockedPreviewSub">-</div>
+        </div>
+        <div class="flex items-center gap-1.5 text-[10px]">
+          <button type="button" onclick="handleToggleAllBlockedMatches(true)" class="text-emerald-700 hover:underline font-bold">Pilih Semua</button>
+          <span class="text-slate-300">|</span>
+          <button type="button" onclick="handleToggleAllBlockedMatches(false)" class="text-slate-500 hover:underline font-bold">Batal</button>
+        </div>
+      </div>
+
+      <!-- DAFTAR SELURUH DATA YANG SAMA -->
+      <div
+        id="blockedMatchesListContainer"
+        class="max-h-72 overflow-y-auto border border-slate-200 rounded divide-y divide-slate-100 text-xs bg-white"
+      >
+        <!-- Diisi dinamis -->
+      </div>
+
+      <!-- TOMBOL EKSEKUSI REPLACE ALL -->
+      <button
+        id="btnExecuteBlockedReplaceAll"
+        type="button"
+        onclick="handleExecuteBlockedReplaceAll()"
+        class="w-full py-2.5 px-3 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-xs font-bold rounded shadow flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+      >
+        <span>⚡ 2. REPLACE ALL DATA YANG SAMA DI SHEET (WARNA HIJAU)</span>
+      </button>
+    </section>
 
   </div>
 
@@ -355,733 +184,431 @@ Fitur:
 
 <script>
 (function() {
-  // State untuk Tab Mode
-  var activeReplaceTab = "ctrlh"; // "ctrlh" atau "range"
-
-  // State untuk Ctrl+F & Ctrl+H Mode
-  var currentCtrlHMatches = []; // Array match objects
-  var lastSearchParams = null;
-
-  // State untuk Range Seleksi
-  var currentSelection = null;
-  var selectionRowsList = [];
-  var columnOptions = [];
+  // State
+  var lastSelection = null;
+  var currentKeyword = "";
+  var currentTargetColIndex = null;
+  var currentMatchColIndex = null;
+  var currentMatches = [];
+  var availableColumns = [];
 
   window.initReplaceHppView = function() {
-    // Otomatis fokus ke input pencarian
-    setTimeout(function() {
-      var fInput = document.getElementById("inputCtrlFFind");
-      if (fInput && activeReplaceTab === "ctrlh") {
-        fInput.focus();
-      }
-    }, 200);
+    // Siap saat menu dibuka
   };
 
   /**
-   * Switch antara Tab 1 (Ctrl+F/H) dan Tab 2 (Range yang Diblok)
+   * 1. Membaca sel yang sedang diblok di Google Sheets
    */
-  window.switchReplaceModeTab = function(tab) {
-    activeReplaceTab = tab;
-    var btnCtrlH = document.getElementById("tabBtnModeCtrlH");
-    var btnRange = document.getElementById("tabBtnModeRangeSel");
-    var panelCtrlH = document.getElementById("panelCtrlHMode");
-    var panelRange = document.getElementById("panelRangeSelMode");
-
-    if (tab === "ctrlh") {
-      if (btnCtrlH) {
-        btnCtrlH.className = "flex-1 py-1.5 px-2 text-center rounded border-b-2 border-emerald-600 text-emerald-800 bg-emerald-50/60 font-bold transition-colors";
-      }
-      if (btnRange) {
-        btnRange.className = "flex-1 py-1.5 px-2 text-center rounded border-b-2 border-transparent text-slate-500 hover:text-slate-800 font-bold transition-colors";
-      }
-      if (panelCtrlH) panelCtrlH.classList.remove("hidden");
-      if (panelRange) panelRange.classList.add("hidden");
-      var fInput = document.getElementById("inputCtrlFFind");
-      if (fInput) fInput.focus();
-    } else {
-      if (btnRange) {
-        btnRange.className = "flex-1 py-1.5 px-2 text-center rounded border-b-2 border-emerald-600 text-emerald-800 bg-emerald-50/60 font-bold transition-colors";
-      }
-      if (btnCtrlH) {
-        btnCtrlH.className = "flex-1 py-1.5 px-2 text-center rounded border-b-2 border-transparent text-slate-500 hover:text-slate-800 font-bold transition-colors";
-      }
-      if (panelRange) panelRange.classList.remove("hidden");
-      if (panelCtrlH) panelCtrlH.classList.add("hidden");
-    }
-  };
-
-  // =========================================================================
-  // LOGIKA 1: CTRL+F & CTRL+H (FIND & REPLACE DI SELURUH SHEET TERBUKA)
-  // =========================================================================
-
-  function getCtrlHSearchParams() {
-    var findInput = document.getElementById("inputCtrlFFind");
-    var repInput = document.getElementById("inputCtrlHReplace");
-    var scopeRadio = document.querySelector('input[name="ctrlHScope"]:checked');
-    var chkExact = document.getElementById("chkCtrlHExactMatch");
-    var chkCase = document.getElementById("chkCtrlHMatchCase");
-    var chkGreen = document.getElementById("chkCtrlHHighlightGreen");
-
-    var searchText = findInput ? findInput.value.trim() : "";
-    var replaceText = repInput ? repInput.value : "";
-    var scope = scopeRadio ? scopeRadio.value : "active";
-    var matchEntireCell = chkExact ? chkExact.checked : false;
-    var matchCase = chkCase ? chkCase.checked : false;
-    var applyHighlight = chkGreen ? chkGreen.checked : true;
-
-    return {
-      searchText: searchText,
-      replaceText: replaceText,
-      scope: scope,
-      matchEntireCell: matchEntireCell,
-      matchCase: matchCase,
-      applyHighlight: applyHighlight,
-      highlightColor: applyHighlight ? "#dcfce7" : ""
-    };
-  }
-
-  window.handleExecuteFindAll = function() {
-    var params = getCtrlHSearchParams();
-    if (!params.searchText) {
-      showAuditStatus("warning", "Ketikkan teks / angka yang ingin dicari terlebih dahulu.");
-      var fInput = document.getElementById("inputCtrlFFind");
-      if (fInput) fInput.focus();
-      return;
-    }
-
-    lastSearchParams = params;
-    var btn = document.getElementById("btnCtrlHFindAll");
+  window.handleReadBlockedCell = function() {
+    var btn = document.getElementById("btnReadBlockedCell");
     btn.disabled = true;
-    btn.innerHTML = '<span class="animate-spin inline-block">⏳</span> Mencari di Sheet...';
+    btn.innerHTML = '<span class="animate-spin inline-block">⏳</span> Membaca Sel yang Sedang Diblok...';
 
     if (hasGoogleScriptRun()) {
       google.script.run
-        .withSuccessHandler(function(res) {
+        .withSuccessHandler(function(sel) {
           btn.disabled = false;
-          btn.innerHTML = '<span>🔍 1. Cari Data (Find)</span>';
-          processCtrlHSearchResults(res);
+          btn.innerHTML = '<span>🔍 1. Baca Ulang Sel yang Sedang Diblok</span>';
+          if (!sel || !sel.values || sel.values.length === 0) {
+            showAuditStatus("error", "Tidak ada sel yang sedang diblok di sheet.");
+            return;
+          }
+          processReadBlockedSelection(sel);
         })
         .withFailureHandler(function(err) {
           btn.disabled = false;
-          btn.innerHTML = '<span>🔍 1. Cari Data (Find)</span>';
-          showAuditStatus("error", "Gagal mencari data: " + err.message);
+          btn.innerHTML = '<span>🔍 1. Baca Sel yang Sedang Diblok di Sheet</span>';
+          showAuditStatus("error", "Gagal membaca sel: " + err.message);
         })
-        .findDataInSheet(params);
+        .readSelectedRangeFromSheet();
     } else {
       setTimeout(function() {
         btn.disabled = false;
-        btn.innerHTML = '<span>🔍 1. Cari Data (Find)</span>';
-        // Demo mock data
-        processCtrlHSearchResults({
-          success: true,
-          activeSheetName: "Sheet1 (Demo)",
-          scope: params.scope,
-          totalMatches: 4,
-          searchText: params.searchText,
-          replaceText: params.replaceText,
-          matches: [
-            { sheetName: "Sheet1", sheetRow: 2, sheetCol: 2, cellAddress: "B2", oldValue: params.searchText, displayValue: params.searchText, newValue: params.replaceText || params.searchText, rowContext: "Beras", columnHeader: "Bahan", isChecked: true },
-            { sheetName: "Sheet1", sheetRow: 5, sheetCol: 2, cellAddress: "B5", oldValue: params.searchText, displayValue: params.searchText, newValue: params.replaceText || params.searchText, rowContext: "Kecap", columnHeader: "Bahan", isChecked: true },
-            { sheetName: "Sheet1", sheetRow: 8, sheetCol: 5, cellAddress: "E8", oldValue: 13814, displayValue: "Rp 13.814", newValue: params.replaceText || 13814, rowContext: "Ayam Charsiu", columnHeader: "Harga", isChecked: true },
-            { sheetName: "Sheet1", sheetRow: 12, sheetCol: 5, cellAddress: "E12", oldValue: 13814, displayValue: "Rp 13.814", newValue: params.replaceText || 13814, rowContext: "Ayam Promo", columnHeader: "Harga", isChecked: true }
-          ]
+        btn.innerHTML = '<span>🔍 1. Baca Ulang Sel yang Sedang Diblok</span>';
+        // Demo di browser
+        processReadBlockedSelection({
+          sheetName: "HPP CIAMSO SBY (Demo)",
+          address: "C4:G4",
+          startRow: 4,
+          startCol: 3,
+          rowCount: 1,
+          columnCount: 5,
+          values: [["ayam grill", 1, "porsi", 1, 5674]],
+          displayValues: [["ayam grill", "1", "porsi", "1", "5.674"]]
         });
       }, 500);
     }
   };
 
-  function processCtrlHSearchResults(res) {
-    if (!res || !res.matches) return;
-    currentCtrlHMatches = res.matches;
+  /**
+   * Mengolah data sel yang diblok
+   */
+  function processReadBlockedSelection(sel) {
+    lastSelection = sel;
 
-    var box = document.getElementById("ctrlHResultsBox");
+    var startCol = Number(sel.startCol);
+    var firstRowVals = sel.values[0] || [];
+    var firstRowDisp = sel.displayValues ? sel.displayValues[0] : firstRowVals;
+
+    // Tentukan kata kunci acuan & nilai baru awal
+    // Default: Ambil teks pertama yang bukan angka murni sebagai kata kunci
+    var detectedKey = "";
+    var detectedKeyCol = startCol - 1; // 0-based
+    var detectedNewVal = "";
+    var detectedTargetCol = null;
+
+    var multiPills = [];
+
+    for (var c = 0; c < firstRowVals.length; c++) {
+      var val = String(firstRowVals[c] !== null && firstRowVals[c] !== undefined ? firstRowVals[c] : "").trim();
+      var disp = String(firstRowDisp[c] || val).trim();
+      if (!val) continue;
+
+      var absCol = startCol - 1 + c;
+
+      if (!detectedKey && isNaN(Number(val)) && !/^\d+$/.test(val)) {
+        detectedKey = val;
+        detectedKeyCol = absCol;
+      } else if (!detectedNewVal && (!isNaN(Number(val)) || /^\d+$/.test(val))) {
+        detectedNewVal = val;
+        detectedTargetCol = absCol;
+      }
+
+      multiPills.push({
+        colIdx: absCol,
+        val: val,
+        disp: disp
+      });
+    }
+
+    if (!detectedKey && firstRowVals.length > 0) {
+      detectedKey = String(firstRowVals[0]).trim();
+      detectedKeyCol = startCol - 1;
+    }
+
+    currentKeyword = detectedKey;
+    currentMatchColIndex = detectedKeyCol;
+    currentTargetColIndex = detectedTargetCol;
+
+    // Update UI Tampilan Data Acuan
+    var box = document.getElementById("blockedCellDetailsBox");
     if (box) box.classList.remove("hidden");
 
-    var lblTotal = document.getElementById("lblCtrlHTotalMatches");
-    var lblContext = document.getElementById("lblCtrlHSearchContext");
+    document.getElementById("lblBlockedRangeAddr").textContent = sel.sheetName + " (" + sel.address + ")";
+    document.getElementById("inputBlockedKeyword").value = currentKeyword;
 
-    if (lblTotal) {
-      lblTotal.textContent = res.totalMatches + " Hasil Ditemukan";
-    }
-    if (lblContext) {
-      var scopeText = res.scope === "all_sheets" ? "Seluruh Tab Sheet" : ("Sheet '" + res.activeSheetName + "'");
-      lblContext.textContent = "Pencarian '" + res.searchText + "' pada " + scopeText;
+    var inputVal = document.getElementById("inputBlockedNewValue");
+    if (inputVal && detectedNewVal) {
+      inputVal.value = detectedNewVal;
     }
 
-    renderCtrlHMatchesList();
+    // Jika user memblok beberapa sel sekaligus, tampilkan pill pilihan cepat
+    var multiBox = document.getElementById("blockedMultiCellsContainer");
+    if (multiBox) {
+      if (multiPills.length > 1) {
+        multiBox.classList.remove("hidden");
+        multiBox.innerHTML = '<span class="text-[10px] text-slate-500 font-semibold self-center mr-1">Pilih Acuan:</span>' +
+          multiPills.map(function(p) {
+            var activeClass = p.val === currentKeyword ? 'bg-emerald-700 text-white' : 'bg-white text-slate-700 border hover:bg-slate-50';
+            return '<button type="button" onclick="handlePickKeywordFromPill(\'' + escapeHtml(p.val) + '\', ' + p.colIdx + ')" class="text-[10px] font-bold px-2 py-0.5 rounded shadow-xs ' + activeClass + '">' +
+              escapeHtml(p.disp) +
+            '</button>';
+          }).join('');
+      } else {
+        multiBox.classList.add("hidden");
+        multiBox.innerHTML = '';
+      }
+    }
 
-    if (res.totalMatches === 0) {
-      showAuditStatus("info", "Tidak ditemukan sel yang cocok dengan pencarian '" + res.searchText + "'.");
+    // Jalankan pencarian seluruh data yang sama di sheet
+    scanMatchesFromBackend();
+  }
+
+  window.handlePickKeywordFromPill = function(val, colIdx) {
+    currentKeyword = val;
+    currentMatchColIndex = colIdx;
+    document.getElementById("inputBlockedKeyword").value = val;
+    scanMatchesFromBackend();
+  };
+
+  window.handleBlockedKeywordManualChange = function(val) {
+    currentKeyword = val.trim();
+  };
+
+  window.handleReScanMatches = function() {
+    var kwInput = document.getElementById("inputBlockedKeyword");
+    if (kwInput) currentKeyword = kwInput.value.trim();
+    scanMatchesFromBackend();
+  };
+
+  /**
+   * Scan seluruh baris di sheet yang memiliki data sama dengan kata kunci
+   */
+  function scanMatchesFromBackend() {
+    if (!currentKeyword) return;
+
+    var lblCount = document.getElementById("lblBlockedMatchCount");
+    if (lblCount) lblCount.textContent = "⏳ Mencari di sheet...";
+
+    var chkExact = document.getElementById("chkBlockedMatchExact");
+    var matchExact = chkExact ? chkExact.checked : true;
+
+    var newValInput = document.getElementById("inputBlockedNewValue");
+    var newVal = newValInput ? newValInput.value : "";
+
+    var params = {
+      searchKeyword: currentKeyword,
+      matchColIndex: currentMatchColIndex,
+      targetColIndex: currentTargetColIndex,
+      newValue: newVal,
+      matchExact: matchExact,
+      matchCase: false
+    };
+
+    if (hasGoogleScriptRun()) {
+      google.script.run
+        .withSuccessHandler(function(res) {
+          processScanMatchesResult(res);
+        })
+        .withFailureHandler(function(err) {
+          if (lblCount) lblCount.textContent = "Gagal scan";
+          showAuditStatus("error", "Gagal scan kecocokan: " + err.message);
+        })
+        .findMatchingRowsFromSelectedCell(params);
     } else {
-      showAuditStatus("success", "Ditemukan " + res.totalMatches + " sel yang cocok. Periksa hasil sebelum me-replace.");
+      setTimeout(function() {
+        // Demo
+        processScanMatchesResult({
+          success: true,
+          sheetName: "HPP CIAMSO SBY (Demo)",
+          totalMatches: 3,
+          searchKeyword: currentKeyword,
+          columns: [
+            { colIndex: 0, colNumber: 1, colLetter: "A", headerName: "No.", label: "Kolom A (No.)" },
+            { colIndex: 1, colNumber: 2, colLetter: "B", headerName: "Preparetion", label: "Kolom B (Preparetion)" },
+            { colIndex: 2, colNumber: 3, colLetter: "C", headerName: "Bahan", label: "Kolom C (Bahan)" },
+            { colIndex: 3, colNumber: 4, colLetter: "D", headerName: "Gramasi", label: "Kolom D (Gramasi)" },
+            { colIndex: 4, colNumber: 5, colLetter: "E", headerName: "SATUAN", label: "Kolom E (SATUAN)" },
+            { colIndex: 5, colNumber: 6, colLetter: "F", headerName: "KEMASAN", label: "Kolom F (KEMASAN)" },
+            { colIndex: 6, colNumber: 7, colLetter: "G", headerName: "HARGA / KEMASAN", label: "Kolom G (HARGA / KEMASAN)" }
+          ],
+          matches: [
+            { sheetName: "HPP CIAMSO", sheetRow: 4, sheetCol: 7, cellAddress: "G4", rowContext: "BUBUR ORIENTAL", targetColName: "Kolom G (HARGA / KEMASAN)", oldValue: 5385, displayValue: "5.385", newValue: newVal || 5674, isChecked: true },
+            { sheetName: "HPP CIAMSO", sheetRow: 15, sheetCol: 7, cellAddress: "G15", rowContext: "BUBUR AYAM HAUCEK", targetColName: "Kolom G (HARGA / KEMASAN)", oldValue: 5385, displayValue: "5.385", newValue: newVal || 5674, isChecked: true },
+            { sheetName: "HPP CIAMSO", sheetRow: 28, sheetCol: 7, cellAddress: "G28", rowContext: "MIE AYAM CHARSIU", targetColName: "Kolom G (HARGA / KEMASAN)", oldValue: 5385, displayValue: "5.385", newValue: newVal || 5674, isChecked: true }
+          ]
+        });
+      }, 400);
     }
   }
 
-  function renderCtrlHMatchesList() {
-    var container = document.getElementById("ctrlHMatchesListContainer");
-    if (!container) return;
+  function processScanMatchesResult(res) {
+    if (!res) return;
+    currentMatches = res.matches || [];
+    availableColumns = res.columns || [];
 
-    if (currentCtrlHMatches.length === 0) {
-      container.innerHTML = '<div class="p-3 text-center text-slate-400 text-xs">Tidak ada hasil pencarian.</div>';
-      return;
+    var lblCount = document.getElementById("lblBlockedMatchCount");
+    if (lblCount) {
+      lblCount.textContent = "Ditemukan " + currentMatches.length + " Baris yang Sama";
     }
 
-    var html = currentCtrlHMatches.map(function(item, idx) {
-      var isChecked = item.isChecked !== false ? "checked" : "";
-      var sheetBadge = item.sheetName ? '<span class="text-[9px] bg-slate-100 text-slate-600 px-1 py-0.5 rounded">' + item.sheetName + '</span>' : '';
+    // Populate dropdown target kolom jika belum
+    var selectCol = document.getElementById("selectTargetColToReplace");
+    if (selectCol && availableColumns.length > 0) {
+      var currentVal = selectCol.value;
+      selectCol.innerHTML = availableColumns.map(function(c) {
+        return '<option value="' + c.colIndex + '">' + escapeHtml(c.label) + '</option>';
+      }).join('');
 
-      return '<div class="p-2 bg-white hover:bg-slate-50 flex items-start justify-between gap-2 text-xs border-b border-slate-100 transition-colors" id="ctrlHMatch_' + idx + '">' +
-        '<div class="flex items-start gap-2 flex-1 min-w-0">' +
-          '<input type="checkbox" ' + isChecked + ' onchange="handleToggleCtrlHRow(' + idx + ', this.checked)" class="rounded text-emerald-600 focus:ring-emerald-500 shrink-0 w-3.5 h-3.5 mt-0.5 cursor-pointer">' +
-          '<div class="flex-1 min-w-0 space-y-0.5">' +
-            '<div class="flex items-center gap-1.5 flex-wrap">' +
-              '<span class="font-mono font-bold text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded text-[10px] border border-emerald-200">' + item.cellAddress + '</span>' +
-              sheetBadge +
-              '<span class="font-semibold text-slate-800 text-[11px] truncate">' + escapeHtml(item.rowContext || "") + '</span>' +
-            '</div>' +
-            '<div class="text-[10px] text-slate-500">' +
-              'Kolom: <b class="text-slate-700">' + escapeHtml(item.columnHeader || "") + '</b> • Nilai Saat Ini: <span class="font-mono text-slate-700">' + escapeHtml(String(item.displayValue || item.oldValue)) + '</span>' +
-            '</div>' +
-          '</div>' +
-        '</div>' +
-        '<div class="shrink-0 text-right space-y-1">' +
-          '<input type="text" value="' + escapeHtml(String(item.newValue !== undefined ? item.newValue : "")) + '" ' +
-            'oninput="handleCtrlHRowValueChange(' + idx + ', this.value)" ' +
-            'placeholder="Nilai baru..." ' +
-            'class="w-28 px-1.5 py-0.5 text-xs font-bold text-emerald-800 bg-emerald-50/50 border border-emerald-300 rounded focus:ring-1 focus:ring-emerald-500 text-right">' +
-        '</div>' +
-      '</div>';
-    }).join("");
-
-    container.innerHTML = html;
-    updateCtrlHExecuteButtonText();
-  }
-
-  window.handleToggleCtrlHRow = function(idx, checked) {
-    if (currentCtrlHMatches[idx]) {
-      currentCtrlHMatches[idx].isChecked = checked;
+      // Auto-pilih kolom: cari yang ada kata "harga" atau "kemasan" atau targetColIndex
+      if (currentTargetColIndex !== null) {
+        selectCol.value = String(currentTargetColIndex);
+      } else {
+        var defaultCol = availableColumns.find(function(c) {
+          return /harga\s*[\/\\]?\s*kemasan/i.test(c.headerName) || /harga/i.test(c.headerName);
+        });
+        if (defaultCol) {
+          selectCol.value = String(defaultCol.colIndex);
+          currentTargetColIndex = defaultCol.colIndex;
+        } else if (currentVal && availableColumns.some(function(c) { return String(c.colIndex) === currentVal; })) {
+          selectCol.value = currentVal;
+        }
+      }
     }
-    updateCtrlHExecuteButtonText();
-  };
 
-  window.handleToggleAllCtrlHMatches = function(checked) {
-    currentCtrlHMatches.forEach(function(m) {
-      m.isChecked = checked;
-    });
-    renderCtrlHMatchesList();
-  };
-
-  window.handleCtrlHRowValueChange = function(idx, val) {
-    if (currentCtrlHMatches[idx]) {
-      currentCtrlHMatches[idx].newValue = val;
-    }
-  };
-
-  function updateCtrlHExecuteButtonText() {
-    var btn = document.getElementById("btnCtrlHExecuteChecked");
-    if (!btn) return;
-    var checkedCount = currentCtrlHMatches.filter(function(m) { return m.isChecked !== false; }).length;
-    btn.innerHTML = '<span>⚡ TERAPKAN GANTI PADA ' + checkedCount + ' SEL TERPILIH (WARNA HIJAU)</span>';
+    renderBlockedMatchesList();
+    showAuditStatus("info", "Ditemukan " + currentMatches.length + " baris data '" + currentKeyword + "' di sheet. Pilih kolom target lalu klik Replace All.");
   }
 
   /**
-   * Eksekusi Ganti pada sel yang dicentang
+   * User mengubah target kolom yang ingin diganti
    */
-  window.handleExecuteReplaceCheckedMatches = function() {
-    var checkedMatches = currentCtrlHMatches.filter(function(m) { return m.isChecked !== false; });
-    if (checkedMatches.length === 0) {
-      showAuditStatus("warning", "Pilih minimal 1 sel yang dicentang untuk di-replace.");
+  window.handleSelectTargetColChange = function(colIdxStr) {
+    if (colIdxStr === "") return;
+    currentTargetColIndex = parseInt(colIdxStr, 10);
+    // Scan ulang agar alamat sel target dan nilai lama menyesuaikan ke kolom terpilih
+    scanMatchesFromBackend();
+  };
+
+  /**
+   * User mengubah nilai baru di input utama -> sinkronkan ke semua baris
+   */
+  window.handleBlockedNewValueChange = function(val) {
+    currentMatches.forEach(function(m) {
+      m.newValue = val;
+    });
+    // Update input di tabel preview
+    currentMatches.forEach(function(m, idx) {
+      var inputEl = document.getElementById("inputRowNewVal_" + idx);
+      if (inputEl) inputEl.value = val;
+    });
+    updateBlockedExecuteButton();
+  };
+
+  /**
+   * Render tabel pratinjau seluruh data yang sama di sheet
+   */
+  function renderBlockedMatchesList() {
+    var container = document.getElementById("blockedMatchesListContainer");
+    var lblHeader = document.getElementById("lblBlockedPreviewHeader");
+    var lblSub = document.getElementById("lblBlockedPreviewSub");
+
+    var checkedCount = currentMatches.filter(function(m) { return m.isChecked !== false; }).length;
+
+    if (lblHeader) {
+      lblHeader.textContent = checkedCount + " dari " + currentMatches.length + " Baris Terpilih";
+    }
+    if (lblSub) {
+      var selColObj = availableColumns.find(function(c) { return c.colIndex === currentTargetColIndex; });
+      var colName = selColObj ? selColObj.label : "Kolom Target";
+      lblSub.textContent = "Akan mengganti nilai pada: " + colName;
+    }
+
+    if (!container) return;
+
+    if (currentMatches.length === 0) {
+      container.innerHTML = '<div class="p-3 text-center text-slate-400 text-xs">Tidak ditemukan data yang sama di sheet aktif.</div>';
+      updateBlockedExecuteButton();
       return;
     }
 
-    var params = getCtrlHSearchParams();
-    var btn = document.getElementById("btnCtrlHExecuteChecked");
+    var html = currentMatches.map(function(item, idx) {
+      var isChecked = item.isChecked !== false ? 'checked' : '';
+      var oldDisp = item.displayValue || String(item.oldValue !== null ? item.oldValue : "-");
+
+      return '<div class="p-2 bg-white hover:bg-slate-50 flex items-center justify-between gap-2 text-xs border-b border-slate-100 transition-colors" id="matchRow_' + idx + '">' +
+        '<div class="flex items-center gap-2 flex-1 min-w-0">' +
+          '<input type="checkbox" ' + isChecked + ' onchange="handleToggleBlockedMatchRow(' + idx + ', this.checked)" class="rounded text-emerald-600 focus:ring-emerald-500 shrink-0 w-3.5 h-3.5 cursor-pointer">' +
+          '<div class="flex-1 min-w-0">' +
+            '<div class="flex items-center gap-1.5 flex-wrap">' +
+              '<span class="font-mono font-bold text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded text-[10px] border border-emerald-200">' + item.cellAddress + '</span>' +
+              '<span class="font-bold text-slate-800 text-[11px] truncate">' + escapeHtml(item.rowContext) + '</span>' +
+            '</div>' +
+            '<div class="text-[10px] text-slate-400 mt-0.5">' +
+              'Nilai Saat Ini: <span class="font-mono font-semibold text-slate-600">' + escapeHtml(oldDisp) + '</span>' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+        '<div class="shrink-0 text-right">' +
+          '<input type="text" id="inputRowNewVal_' + idx + '" value="' + escapeHtml(String(item.newValue !== undefined ? item.newValue : "")) + '" ' +
+            'oninput="handleMatchRowValueChange(' + idx + ', this.value)" ' +
+            'placeholder="Nilai baru..." ' +
+            'class="w-28 px-1.5 py-1 text-xs font-bold text-emerald-800 bg-emerald-50/50 border border-emerald-300 rounded focus:ring-1 focus:ring-emerald-500 text-right">' +
+        '</div>' +
+      '</div>';
+    }).join('');
+
+    container.innerHTML = html;
+    updateBlockedExecuteButton();
+  }
+
+  window.handleToggleBlockedMatchRow = function(idx, checked) {
+    if (currentMatches[idx]) {
+      currentMatches[idx].isChecked = checked;
+    }
+    var checkedCount = currentMatches.filter(function(m) { return m.isChecked !== false; }).length;
+    var lblHeader = document.getElementById("lblBlockedPreviewHeader");
+    if (lblHeader) {
+      lblHeader.textContent = checkedCount + " dari " + currentMatches.length + " Baris Terpilih";
+    }
+    updateBlockedExecuteButton();
+  };
+
+  window.handleToggleAllBlockedMatches = function(checked) {
+    currentMatches.forEach(function(m) {
+      m.isChecked = checked;
+    });
+    renderBlockedMatchesList();
+  };
+
+  window.handleMatchRowValueChange = function(idx, val) {
+    if (currentMatches[idx]) {
+      currentMatches[idx].newValue = val;
+    }
+  };
+
+  function updateBlockedExecuteButton() {
+    var btn = document.getElementById("btnExecuteBlockedReplaceAll");
+    if (!btn) return;
+    var checkedCount = currentMatches.filter(function(m) { return m.isChecked !== false; }).length;
+    btn.innerHTML = '<span>⚡ 2. REPLACE ALL DATA YANG SAMA DI SHEET (' + checkedCount + ' Baris - Warna Hijau)</span>';
+  }
+
+  /**
+   * Eksekusi Replace All ke sheet aktif
+   */
+  window.handleExecuteBlockedReplaceAll = function() {
+    var itemsToUpdate = currentMatches.filter(function(m) { return m.isChecked !== false; });
+    if (itemsToUpdate.length === 0) {
+      showAuditStatus("warning", "Pilih minimal 1 baris yang dicentang untuk di-replace.");
+      return;
+    }
+
+    var chkGreen = document.getElementById("chkBlockedApplyGreen");
+    var applyHighlight = chkGreen ? chkGreen.checked : true;
+
+    var btn = document.getElementById("btnExecuteBlockedReplaceAll");
     btn.disabled = true;
-    btn.innerHTML = '<span class="animate-spin inline-block">⏳</span> Mengganti ' + checkedMatches.length + ' Sel di Sheet...';
+    btn.innerHTML = '<span class="animate-spin inline-block">⏳</span> Mengganti ' + itemsToUpdate.length + ' Sel di Sheet...';
 
     var payload = {
-      applyHighlight: params.applyHighlight,
-      highlightColor: params.highlightColor,
-      selectedMatches: checkedMatches
+      applyHighlight: applyHighlight,
+      highlightColor: applyHighlight ? "#dcfce7" : "",
+      selectedMatches: itemsToUpdate
     };
 
     if (hasGoogleScriptRun()) {
       google.script.run
         .withSuccessHandler(function(res) {
           btn.disabled = false;
-          updateCtrlHExecuteButtonText();
-          showAuditStatus("success", "BERHASIL! " + res.totalUpdated + " sel telah di-replace dan diberi warna HIJAU MUDA di sheet!");
-          // Kosongkan atau perbarui list
-          currentCtrlHMatches = [];
-          var box = document.getElementById("ctrlHResultsBox");
-          if (box) box.classList.add("hidden");
+          updateBlockedExecuteButton();
+          showAuditStatus("success", "BERHASIL! " + res.totalUpdated + " sel pada data '" + currentKeyword + "' telah di-replace dan diberi warna HIJAU MUDA di sheet aktif!");
+          // Perbarui nilai lama di tampilan
+          itemsToUpdate.forEach(function(it) {
+            it.oldValue = it.newValue;
+            it.displayValue = String(it.newValue);
+          });
+          renderBlockedMatchesList();
         })
         .withFailureHandler(function(err) {
           btn.disabled = false;
-          updateCtrlHExecuteButtonText();
+          updateBlockedExecuteButton();
           showAuditStatus("error", "Gagal me-replace: " + err.message);
         })
         .replaceDataInSheet(payload);
     } else {
       setTimeout(function() {
         btn.disabled = false;
-        updateCtrlHExecuteButtonText();
-        showAuditStatus("success", "(Demo) Berhasil me-replace " + checkedMatches.length + " sel di sheet dengan warna hijau muda!");
-        currentCtrlHMatches = [];
-        var box = document.getElementById("ctrlHResultsBox");
-        if (box) box.classList.add("hidden");
-      }, 700);
-    }
-  };
-
-  /**
-   * Eksekusi Ganti Semua Langsung (1-Klik)
-   */
-  window.handleExecuteQuickReplaceAllDirect = function() {
-    var params = getCtrlHSearchParams();
-    if (!params.searchText) {
-      showAuditStatus("warning", "Ketikkan teks / angka yang ingin dicari terlebih dahulu.");
-      return;
-    }
-
-    var btn = document.getElementById("btnCtrlHQuickReplaceAll");
-    btn.disabled = true;
-    btn.innerHTML = '<span class="animate-spin inline-block">⏳</span> Mencari &amp; Mengganti...';
-
-    // Cari dulu, lalu langsung replace semua kecocokan
-    if (hasGoogleScriptRun()) {
-      google.script.run
-        .withSuccessHandler(function(findRes) {
-          if (!findRes || !findRes.matches || findRes.matches.length === 0) {
-            btn.disabled = false;
-            btn.innerHTML = '<span>⚡ Ganti Semua Langsung</span>';
-            showAuditStatus("info", "Tidak ditemukan sel yang cocok dengan '" + params.searchText + "'.");
-            return;
-          }
-
-          var payload = {
-            applyHighlight: params.applyHighlight,
-            highlightColor: params.highlightColor,
-            selectedMatches: findRes.matches
-          };
-
-          google.script.run
-            .withSuccessHandler(function(repRes) {
-              btn.disabled = false;
-              btn.innerHTML = '<span>⚡ Ganti Semua Langsung</span>';
-              showAuditStatus("success", "BERHASIL! Mengganti " + repRes.totalUpdated + " sel di sheet dengan warna HIJAU MUDA!");
-            })
-            .withFailureHandler(function(err) {
-              btn.disabled = false;
-              btn.innerHTML = '<span>⚡ Ganti Semua Langsung</span>';
-              showAuditStatus("error", "Gagal replace: " + err.message);
-            })
-            .replaceDataInSheet(payload);
-        })
-        .withFailureHandler(function(err) {
-          btn.disabled = false;
-          btn.innerHTML = '<span>⚡ Ganti Semua Langsung</span>';
-          showAuditStatus("error", "Gagal mencari: " + err.message);
-        })
-        .findDataInSheet(params);
-    } else {
-      setTimeout(function() {
-        btn.disabled = false;
-        btn.innerHTML = '<span>⚡ Ganti Semua Langsung</span>';
-        showAuditStatus("success", "(Demo) Berhasil me-replace semua sel yang cocok di sheet dengan warna hijau muda!");
-      }, 700);
-    }
-  };
-
-  // =========================================================================
-  // LOGIKA 2: RANGE SELEKSI MANUAL (RANGE YANG SEDANG DIBLOK DI SHEET)
-  // =========================================================================
-
-  window.handleReadGenericSelection = function() {
-    var btn = document.getElementById("btnReadGenericSelection");
-    btn.disabled = true;
-    btn.innerHTML = '<span class="animate-spin inline-block">⏳</span> Membaca Range di Sheet...';
-
-    if (hasGoogleScriptRun()) {
-      google.script.run
-        .withSuccessHandler(function(res) {
-          btn.disabled = false;
-          btn.innerHTML = '<span>🔍 1. Baca Ulang Range yang Sedang Diblok</span>';
-          if (!res || !res.values || res.values.length === 0) {
-            showAuditStatus("error", "Range yang dipilih kosong atau belum diblok.");
-            return;
-          }
-          processGenericSelectionResult(res);
-        })
-        .withFailureHandler(function(err) {
-          btn.disabled = false;
-          btn.innerHTML = '<span>🔍 1. Baca Range yang Sedang Diblok di Sheet Aktif</span>';
-          showAuditStatus("error", "Gagal membaca range: " + err.message);
-        })
-        .readSelectedRangeFromSheet();
-    } else {
-      setTimeout(function() {
-        btn.disabled = false;
-        btn.innerHTML = '<span>🔍 1. Baca Ulang Range yang Sedang Diblok</span>';
-        processGenericSelectionResult({
-          sheetName: "Sheet1 (Demo)",
-          address: "B2:E6",
-          startRow: 2,
-          startCol: 2,
-          rowCount: 5,
-          columnCount: 4,
-          values: [
-            ["Bahan", "Gramasi", "Satuan", "Harga"],
-            ["Beras", 75, "gr", 1275],
-            ["Ayam Grill", 1, "porsi", 5385],
-            ["Kecap Asin", 5, "ml", 355],
-            ["Minyak Wijen", 5, "ml", 390]
-          ],
-          displayValues: [
-            ["Bahan", "Gramasi", "Satuan", "Harga"],
-            ["Beras", "75", "gr", "1.275"],
-            ["Ayam Grill", "1", "porsi", "5.385"],
-            ["Kecap Asin", "5", "ml", "355"],
-            ["Minyak Wijen", "5", "ml", "390"]
-          ]
-        });
-      }, 500);
-    }
-  };
-
-  function processGenericSelectionResult(sel) {
-    currentSelection = sel;
-    selectionRowsList = [];
-    columnOptions = [];
-
-    var startRow = Number(sel.startRow);
-    var startCol = Number(sel.startCol);
-    var numRows = Number(sel.rowCount);
-    var numCols = Number(sel.columnCount);
-
-    var firstRowVals = sel.values[0] || [];
-    for (var c = 0; c < numCols; c++) {
-      var colLetter = colNumberToLetter(startCol + c);
-      var headerVal = String(firstRowVals[c] || "").trim();
-      var label = "Kolom " + colLetter + (headerVal ? " (" + headerVal + ")" : "");
-      columnOptions.push({
-        colIdx: c,
-        colNumber: startCol + c,
-        colLetter: colLetter,
-        headerName: headerVal,
-        label: label
-      });
-    }
-
-    var idCounter = 0;
-    for (var r = 0; r < numRows; r++) {
-      for (var c = 0; c < numCols; c++) {
-        var sheetRow = startRow + r;
-        var sheetCol = startCol + c;
-        var cellAddr = colNumberToLetter(sheetCol) + sheetRow;
-        var rawVal = sel.values[r][c];
-        var dispVal = sel.displayValues && sel.displayValues[r] ? sel.displayValues[r][c] : rawVal;
-
-        selectionRowsList.push({
-          id: idCounter++,
-          rIdx: r,
-          cIdx: c,
-          sheetRow: sheetRow,
-          sheetCol: sheetCol,
-          cellAddress: cellAddr,
-          oldValue: rawVal !== null && rawVal !== undefined ? rawVal : "",
-          dispValue: dispVal !== null && dispVal !== undefined ? String(dispVal) : "",
-          newValue: rawVal !== null && rawVal !== undefined ? rawVal : "",
-          isChecked: true,
-          isModified: false
-        });
-      }
-    }
-
-    var box = document.getElementById("genericRangeResultsBox");
-    if (box) box.classList.remove("hidden");
-
-    document.getElementById("lblGenSheetName").textContent = sel.sheetName;
-    document.getElementById("lblGenRangeAddress").textContent = sel.address;
-    document.getElementById("lblGenDimensions").textContent = numRows + " Baris × " + numCols + " Kolom";
-    document.getElementById("lblGenTotalCells").textContent = "Total: " + selectionRowsList.length + " Sel";
-
-    var selectCol = document.getElementById("selectGenTargetCol");
-    if (selectCol) {
-      selectCol.innerHTML = '<option value="ALL">Semua Kolom di Range (' + numCols + ' Kolom)</option>';
-      columnOptions.forEach(function(opt) {
-        var op = document.createElement("option");
-        op.value = String(opt.colIdx);
-        op.textContent = opt.label;
-        selectCol.appendChild(op);
-      });
-      selectCol.value = "ALL";
-    }
-
-    renderGenericCellsList();
-    showAuditStatus("info", "Berhasil membaca range " + sel.address + " (" + selectionRowsList.length + " sel). Silakan sesuaikan nilai pengganti.");
-  }
-
-  window.handleGenTargetColChange = function(colVal) {
-    renderGenericCellsList();
-  };
-
-  function getVisibleCells() {
-    var selectCol = document.getElementById("selectGenTargetCol");
-    var targetColVal = selectCol ? selectCol.value : "ALL";
-
-    if (targetColVal === "ALL") {
-      return selectionRowsList;
-    }
-    var cIdx = parseInt(targetColVal, 10);
-    return selectionRowsList.filter(function(it) {
-      return it.cIdx === cIdx;
-    });
-  }
-
-  function renderGenericCellsList() {
-    var container = document.getElementById("genCellsListContainer");
-    if (!container) return;
-
-    var visible = getVisibleCells();
-    var checkedCount = visible.filter(function(it) { return it.isChecked; }).length;
-
-    var lblCount = document.getElementById("lblGenCheckedCount");
-    if (lblCount) {
-      lblCount.textContent = checkedCount + " dari " + visible.length + " Sel Terpilih";
-    }
-
-    if (visible.length === 0) {
-      container.innerHTML = '<div class="p-3 text-center text-slate-400 text-xs">Tidak ada sel yang dipilih.</div>';
-      return;
-    }
-
-    var html = visible.map(function(item) {
-      var isChecked = item.isChecked ? "checked" : "";
-      var modifiedClass = item.isModified ? "bg-emerald-50 border-emerald-300" : "bg-white border-slate-200";
-      var valDisplay = item.dispValue || String(item.oldValue || "-");
-
-      return '<div class="p-2 ' + modifiedClass + ' flex items-center justify-between gap-2 text-xs transition-colors" id="rowCell_' + item.id + '">' +
-        '<div class="flex items-center gap-2 min-w-0 flex-1">' +
-          '<input type="checkbox" ' + isChecked + ' onchange="handleGenRowCheckToggle(' + item.id + ', this.checked)" class="rounded text-emerald-600 focus:ring-emerald-500 shrink-0 w-3.5 h-3.5 cursor-pointer">' +
-          '<div class="min-w-0 flex-1">' +
-            '<div class="flex items-center gap-1.5">' +
-              '<span class="font-mono font-bold text-slate-700 bg-slate-100 px-1 py-0.5 rounded text-[10px]">' + item.cellAddress + '</span>' +
-              '<span class="text-slate-500 text-[10px] truncate" title="Nilai Asli: ' + escapeHtml(valDisplay) + '">Asli: <b>' + escapeHtml(valDisplay) + '</b></span>' +
-            '</div>' +
-          '</div>' +
-        '</div>' +
-        '<div class="flex items-center gap-1.5 shrink-0">' +
-          '<input type="text" value="' + escapeHtml(String(item.newValue !== undefined ? item.newValue : "")) + '" ' +
-            'oninput="handleGenRowValueChange(' + item.id + ', this.value)" ' +
-            'class="w-32 px-2 py-1 text-xs border border-slate-300 rounded font-semibold text-slate-800 bg-white focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 shadow-sm" ' +
-            'placeholder="Nilai baru...">' +
-          '<button type="button" onclick="handleGenResetSingleRow(' + item.id + ')" class="text-slate-400 hover:text-rose-600 p-0.5 text-xs" title="Reset ke nilai asli">↺</button>' +
-        '</div>' +
-      '</div>';
-    }).join("");
-
-    container.innerHTML = html;
-    updateGenExecuteButton();
-  }
-
-  window.handleGenRowCheckToggle = function(id, checked) {
-    var item = selectionRowsList.find(function(it) { return it.id === id; });
-    if (item) {
-      item.isChecked = checked;
-    }
-    var visible = getVisibleCells();
-    var checkedCount = visible.filter(function(it) { return it.isChecked; }).length;
-    var lblCount = document.getElementById("lblGenCheckedCount");
-    if (lblCount) {
-      lblCount.textContent = checkedCount + " dari " + visible.length + " Sel Terpilih";
-    }
-    updateGenExecuteButton();
-  };
-
-  window.handleToggleAllGenCheckboxes = function(checked) {
-    var visible = getVisibleCells();
-    visible.forEach(function(it) {
-      it.isChecked = checked;
-    });
-    renderGenericCellsList();
-  };
-
-  window.handleGenRowValueChange = function(id, val) {
-    var item = selectionRowsList.find(function(it) { return it.id === id; });
-    if (!item) return;
-
-    item.newValue = val;
-    item.isModified = String(val) !== String(item.oldValue);
-
-    var rowEl = document.getElementById("rowCell_" + id);
-    if (rowEl) {
-      if (item.isModified) {
-        rowEl.classList.add("bg-emerald-50", "border-emerald-300");
-        rowEl.classList.remove("bg-white", "border-slate-200");
-      } else {
-        rowEl.classList.remove("bg-emerald-50", "border-emerald-300");
-        rowEl.classList.add("bg-white", "border-slate-200");
-      }
-    }
-    updateGenExecuteButton();
-  };
-
-  window.handleGenResetSingleRow = function(id) {
-    var item = selectionRowsList.find(function(it) { return it.id === id; });
-    if (!item) return;
-    item.newValue = item.oldValue;
-    item.isModified = false;
-    renderGenericCellsList();
-  };
-
-  window.handleResetAllGenValues = function() {
-    var visible = getVisibleCells();
-    visible.forEach(function(it) {
-      it.newValue = it.oldValue;
-      it.isModified = false;
-    });
-    renderGenericCellsList();
-    showAuditStatus("info", "Semua nilai pada tampilan telah dikembalikan ke nilai asli.");
-  };
-
-  window.handleApplyGenBulkValue = function() {
-    var input = document.getElementById("inputGenBulkValue");
-    if (!input || input.value === "") {
-      showAuditStatus("warning", "Ketikkan nilai yang ingin diisi secara serentak terlebih dahulu.");
-      return;
-    }
-    var val = input.value;
-    var visible = getVisibleCells();
-    var count = 0;
-
-    visible.forEach(function(it) {
-      if (it.isChecked) {
-        it.newValue = val;
-        it.isModified = String(val) !== String(it.oldValue);
-        count++;
-      }
-    });
-
-    renderGenericCellsList();
-    showAuditStatus("success", "Berhasil menerapkan nilai '" + val + "' ke " + count + " sel terpilih!");
-  };
-
-  window.handleApplyGenFindReplace = function() {
-    var findInput = document.getElementById("inputGenFindText");
-    var repInput = document.getElementById("inputGenReplaceText");
-    var findText = findInput ? findInput.value : "";
-    var repText = repInput ? repInput.value : "";
-
-    if (!findText) {
-      showAuditStatus("warning", "Ketik teks yang ingin dicari.");
-      return;
-    }
-
-    var visible = getVisibleCells();
-    var count = 0;
-
-    visible.forEach(function(it) {
-      if (it.isChecked) {
-        var str = String(it.newValue !== undefined ? it.newValue : it.oldValue);
-        if (str.indexOf(findText) !== -1) {
-          var replaced = str.split(findText).join(repText);
-          it.newValue = replaced;
-          it.isModified = String(replaced) !== String(it.oldValue);
-          count++;
-        }
-      }
-    });
-
-    renderGenericCellsList();
-    showAuditStatus("success", "Cari & Ganti selesai: " + count + " sel berhasil diubah!");
-  };
-
-  function updateGenExecuteButton() {
-    var btn = document.getElementById("btnExecuteGenericReplace");
-    if (!btn) return;
-
-    var visible = getVisibleCells();
-    var checked = visible.filter(function(it) { return it.isChecked; });
-
-    btn.innerHTML = '<span>⚡ 2. TERAPKAN PERUBAHAN KE SHEET AKTIF (' + checked.length + ' Sel Terpilih)</span>';
-  }
-
-  window.handleExecuteGenericReplace = function() {
-    var visible = getVisibleCells();
-    var itemsToUpdate = visible.filter(function(it) { return it.isChecked; });
-
-    if (itemsToUpdate.length === 0) {
-      showAuditStatus("warning", "Pilih minimal 1 sel yang dicentang untuk di-replace.");
-      return;
-    }
-
-    var chkGreen = document.getElementById("chkGenApplyGreen");
-    var applyHighlight = chkGreen ? chkGreen.checked : true;
-
-    var btn = document.getElementById("btnExecuteGenericReplace");
-    btn.disabled = true;
-    btn.innerHTML = '<span class="animate-spin inline-block">⏳</span> Menerapkan ke Sheet Aktif...';
-
-    var payload = {
-      applyHighlight: applyHighlight,
-      highlightColor: applyHighlight ? "#dcfce7" : "",
-      updates: itemsToUpdate.map(function(it) {
-        return {
-          sheetRow: it.sheetRow,
-          sheetCol: it.sheetCol,
-          cellAddress: it.cellAddress,
-          oldValue: it.oldValue,
-          newValue: it.newValue
-        };
-      })
-    };
-
-    if (hasGoogleScriptRun()) {
-      google.script.run
-        .withSuccessHandler(function(res) {
-          btn.disabled = false;
-          btn.innerHTML = '<span>⚡ 2. TERAPKAN PERUBAHAN KE SHEET AKTIF</span>';
-          showAuditStatus("success", "BERHASIL! " + res.totalUpdated + " sel pada sheet '" + res.sheetName + "' telah di-replace" + (applyHighlight ? " dan diberi warna HIJAU MUDA!" : "!"));
-          itemsToUpdate.forEach(function(it) {
-            it.oldValue = it.newValue;
-            it.dispValue = String(it.newValue);
-            it.isModified = false;
-          });
-          renderGenericCellsList();
-        })
-        .withFailureHandler(function(err) {
-          btn.disabled = false;
-          btn.innerHTML = '<span>⚡ 2. TERAPKAN PERUBAHAN KE SHEET AKTIF</span>';
-          showAuditStatus("error", "Gagal replace: " + err.message);
-        })
-        .replaceGenericSelectedRange(payload);
-    } else {
-      setTimeout(function() {
-        btn.disabled = false;
-        btn.innerHTML = '<span>⚡ 2. TERAPKAN PERUBAHAN KE SHEET AKTIF</span>';
-        showAuditStatus("success", "(Mode Demo) Berhasil me-replace " + itemsToUpdate.length + " sel di sheet aktif dengan warna hijau!");
+        updateBlockedExecuteButton();
+        showAuditStatus("success", "(Demo) Berhasil me-replace " + itemsToUpdate.length + " sel di sheet aktif dengan warna hijau muda!");
         itemsToUpdate.forEach(function(it) {
           it.oldValue = it.newValue;
-          it.dispValue = String(it.newValue);
-          it.isModified = false;
+          it.displayValue = String(it.newValue);
         });
-        renderGenericCellsList();
+        renderBlockedMatchesList();
       }, 700);
     }
   };
-
-  // Helper
-  function colNumberToLetter(colNum) {
-    var temp = Number(colNum);
-    var letter = "";
-    while (temp > 0) {
-      var mod = (temp - 1) % 26;
-      letter = String.fromCharCode(65 + mod) + letter;
-      temp = Math.floor((temp - 1) / 26);
-    }
-    return letter || "A";
-  }
 
   function escapeHtml(str) {
     return String(str || "")

@@ -17,28 +17,127 @@ Fitur:
 -->
 <div id="viewCiamsoPembanding" class="space-y-3">
 
-  <!-- STEP 1: INFO DATA PEMBANDING CIAMSO -->
+  <!-- STEP 1: INFO DATA PEMBANDING CIAMSO / OUTLET -->
   <section class="bg-white rounded-lg border border-slate-200 p-3.5 shadow-sm space-y-2.5">
     <div class="flex items-start justify-between gap-2">
       <div>
-        <h2 class="text-xs font-bold uppercase tracking-wider text-emerald-800">1. Data Pembanding Ciamso (Inventory Okt)</h2>
+        <h2 class="text-xs font-bold uppercase tracking-wider text-emerald-800">1. Data Pembanding Outlet (<span id="ciamsoOutletNameTitle">CIAMSO SBY</span>)</h2>
         <p class="text-[11px] text-slate-500">
-          Dibaca dari database <code class="font-mono text-emerald-700">INVENTORY CIAMSO SBY OKT</code> (116 Item).
+          Slot file: <code class="font-mono text-emerald-700">DataInventoryOutlet.gs</code> • Sheet: <span id="ciamsoOutletSheetName" class="font-semibold text-slate-700">INVENTORY CIAMSO SBY OKT</span>
         </p>
       </div>
-      <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 shrink-0">
-        116 Item Aktif
-      </span>
+      <div class="flex items-center gap-1 shrink-0">
+        <span id="ciamsoOutletCountBadge" class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+          116 Item Aktif
+        </span>
+        <button
+          type="button"
+          onclick="toggleOutletGeneratorPanel()"
+          title="Buka Generator Slot .gs Outlet"
+          class="text-[10px] font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 px-2 py-0.5 rounded flex items-center gap-1 shadow-sm transition"
+        >
+          ⚙️ Ganti (.gs)
+        </button>
+      </div>
     </div>
 
-    <!-- Ringkasan Dataset Ciamso -->
+    <!-- Ringkasan Dataset Outlet -->
     <div class="bg-emerald-50/70 border border-emerald-200 rounded-md px-2.5 py-2 text-[11px] text-emerald-900 space-y-0.5">
       <div class="flex items-center justify-between">
-        <span class="font-semibold">✓ Sumber: INVENTORY CIAMSO SBY OKT</span>
-        <span class="font-semibold bg-white px-1.5 py-0.5 rounded border border-emerald-200 text-[10px]">Periode: Okt 2026</span>
+        <span class="font-semibold">✓ Outlet Aktif: <span id="txtOutletNameBadge">CIAMSO SBY</span></span>
+        <span id="txtOutletPeriode" class="font-semibold bg-white px-1.5 py-0.5 rounded border border-emerald-200 text-[10px]">Periode: OKTOBER 2026</span>
       </div>
       <div class="text-[10px] text-emerald-700">
-        Data inventori siap dicocokkan otomatis dengan satuan &amp; harga kemasan resep HPP.
+        Data ini otomatis sinkron dengan <strong>Menu 02 (Pembanding HPP)</strong>, <strong>Menu 05</strong>, dan <strong>Menu 06</strong>.
+      </div>
+    </div>
+
+    <!-- PANEL GENERATOR SLOT DATA INVENTORY OUTLET (.gs) -->
+    <div id="outletGeneratorPanel" class="hidden border border-emerald-300 bg-emerald-50/40 rounded-lg p-3 space-y-2.5 mt-2 transition-all">
+      <div class="flex items-center justify-between border-b border-emerald-200 pb-1.5">
+        <div>
+          <h3 class="text-xs font-bold text-emerald-900">⚡ Generator Slot Data Inventory Outlet (.gs)</h3>
+          <p class="text-[10px] text-emerald-700">Scan sheet outlet atau paste JSON untuk membuat file .gs baru.</p>
+        </div>
+        <button type="button" onclick="toggleOutletGeneratorPanel()" class="text-slate-400 hover:text-slate-600 text-xs font-bold px-1">✕</button>
+      </div>
+
+      <div class="grid grid-cols-2 gap-2">
+        <button
+          type="button"
+          id="btnScanActiveSheetOutlet"
+          onclick="handleScanActiveSheetToOutlet()"
+          class="w-full py-1.5 px-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-[11px] font-semibold shadow-sm flex items-center justify-center gap-1"
+        >
+          <span>⚡ Scan Sheet Aktif</span>
+        </button>
+        <button
+          type="button"
+          onclick="toggleJsonOutletBox()"
+          class="w-full py-1.5 px-2 bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 rounded text-[11px] font-semibold shadow-sm flex items-center justify-center gap-1"
+        >
+          <span>📋 Paste JSON Outlet</span>
+        </button>
+      </div>
+
+      <!-- Box Input JSON -->
+      <div id="boxJsonOutletInput" class="hidden space-y-1.5 pt-1">
+        <label class="block text-[10px] font-semibold text-slate-600">Tempel JSON Format Inventory / Audit Data Tools:</label>
+        <textarea
+          id="txtJsonOutletInput"
+          rows="3"
+          class="w-full text-[10px] font-mono border border-slate-300 rounded p-1.5 focus:border-emerald-500 focus:outline-none bg-white"
+          placeholder='{"metadata":{"sourceSheet":"INVENTORY CIAMSO SBY OKT"},"data":[...]}'
+        ></textarea>
+        <button
+          type="button"
+          onclick="handleConvertJsonToOutlet()"
+          class="py-1 px-2.5 bg-emerald-700 text-white rounded text-[10px] font-semibold hover:bg-emerald-800"
+        >
+          Konversi ke .gs Sekarang
+        </button>
+      </div>
+
+      <!-- Output Generator Box (muncul setelah scan/konversi) -->
+      <div id="outletGeneratorOutput" class="hidden space-y-2 border-t border-emerald-200 pt-2">
+        <div class="flex items-center justify-between">
+          <span id="outletOutputStatusBadge" class="text-[10px] font-bold text-emerald-800 bg-white px-2 py-0.5 rounded border border-emerald-200">
+            ✓ Siap
+          </span>
+          <div class="flex items-center gap-1">
+            <button
+              type="button"
+              onclick="copyOutletGsCode()"
+              class="text-[10px] font-semibold text-emerald-700 bg-white hover:bg-emerald-50 border border-emerald-300 px-2 py-0.5 rounded shadow-sm"
+            >
+              📋 Salin Kode .gs
+            </button>
+            <button
+              type="button"
+              onclick="downloadOutletGsCode()"
+              class="text-[10px] font-semibold text-slate-600 bg-white hover:bg-slate-50 border border-slate-300 px-2 py-0.5 rounded shadow-sm"
+            >
+              💾 Unduh .gs
+            </button>
+          </div>
+        </div>
+
+        <div class="text-[10px] text-slate-600 bg-white border border-slate-200 rounded p-2 leading-relaxed">
+          <div class="font-bold text-slate-700 mb-0.5">Cara Memasang ke Apps Script:</div>
+          <ol class="list-decimal ml-4 space-y-0.5 text-[9px] text-slate-600">
+            <li>Klik tombol <strong>Salin Kode .gs</strong> di atas.</li>
+            <li>Buka editor Apps Script, pilih file <code class="text-emerald-700 font-mono font-bold">DataInventoryOutlet.gs</code>.</li>
+            <li>Paste kode baru tersebut, lalu tekan <strong>Ctrl + S</strong>.</li>
+            <li>Data outlet ini langsung otomatis tampil sebagai pembanding di <strong>Menu 02</strong>, <strong>Menu 05</strong>, dan <strong>Menu 06</strong>!</li>
+          </ol>
+        </div>
+
+        <textarea
+          id="txtOutletGsCodePreview"
+          readonly
+          rows="5"
+          class="w-full text-[9px] font-mono bg-slate-900 text-emerald-300 p-2 rounded border border-slate-700 focus:outline-none"
+        ></textarea>
       </div>
     </div>
   </section>
@@ -218,6 +317,7 @@ Fitur:
   var ciamsoRowCheckedMap = {};
 
   function initCiamsoPembandingView() {
+    loadActiveOutletInventory();
     if (ciamsoRawSelection) {
       recomputeCiamsoComparison();
     }
@@ -1002,5 +1102,175 @@ Fitur:
         showAuditStatus("success", "✓ Simulasi: " + validRowsToUpdate.length + " sel kolom HARGA / KEMASAN berhasil di-replace dengan warna HIJAU!");
       }, 500);
     }
+  }
+
+  // =========================================================================
+  // FITUR GENERATOR SLOT DATA INVENTORY OUTLET (.gs)
+  // =========================================================================
+  var activeOutletDataPayload = null;
+
+  function toggleOutletGeneratorPanel() {
+    var p = document.getElementById("outletGeneratorPanel");
+    if (p) p.classList.toggle("hidden");
+  }
+
+  function toggleJsonOutletBox() {
+    var b = document.getElementById("boxJsonOutletInput");
+    if (b) b.classList.toggle("hidden");
+  }
+
+  function loadActiveOutletInventory() {
+    if (hasGoogleScriptRun()) {
+      google.script.run
+        .withSuccessHandler(function(res) {
+          if (res && Array.isArray(res.items) && res.items.length > 0) {
+            CIAMSO_JSON_ITEMS = res.items;
+            updateOutletDisplayInfo(res);
+            if (ciamsoRawSelection) recomputeCiamsoComparison();
+          }
+        })
+        .getInventoryOutletData();
+    }
+  }
+
+  function updateOutletDisplayInfo(res) {
+    if (!res) return;
+    activeOutletDataPayload = res;
+    var name = res.outletName || "CIAMSO SBY";
+    var sheet = res.sourceSheet || "INVENTORY CIAMSO SBY OKT";
+    var count = (res.items && res.items.length) || res.totalItems || 0;
+    var period = res.periode || "OKTOBER 2026";
+
+    var elTitle = document.getElementById("ciamsoOutletNameTitle");
+    if (elTitle) elTitle.textContent = name;
+    var elSheet = document.getElementById("ciamsoOutletSheetName");
+    if (elSheet) elSheet.textContent = sheet;
+    var elBadge = document.getElementById("ciamsoOutletCountBadge");
+    if (elBadge) elBadge.textContent = count + " Item Aktif";
+    var elBadgeName = document.getElementById("txtOutletNameBadge");
+    if (elBadgeName) elBadgeName.textContent = name;
+    var elPeriod = document.getElementById("txtOutletPeriode");
+    if (elPeriod) elPeriod.textContent = "Periode: " + period;
+  }
+
+  function handleScanActiveSheetToOutlet() {
+    var btn = document.getElementById("btnScanActiveSheetOutlet");
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = '<span class="animate-spin inline-block">⏳</span> Memindai Sheet...';
+    }
+
+    if (hasGoogleScriptRun()) {
+      google.script.run
+        .withSuccessHandler(function(res) {
+          if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<span>⚡ Scan Sheet Aktif</span>';
+          }
+          if (res && res.items && res.items.length > 0) {
+            displayOutletGsCodeResult(res);
+            CIAMSO_JSON_ITEMS = res.items;
+            updateOutletDisplayInfo(res);
+            if (ciamsoRawSelection) recomputeCiamsoComparison();
+            showAuditStatus("success", "✓ Berhasil memindai " + res.items.length + " item dari sheet '" + res.sourceSheet + "'!");
+          } else {
+            showAuditStatus("error", "Tidak ada item valid yang ditemukan dari sheet aktif.");
+          }
+        })
+        .withFailureHandler(function(err) {
+          if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<span>⚡ Scan Sheet Aktif</span>';
+          }
+          showAuditStatus("error", "Gagal memindai sheet: " + (err.message || err));
+        })
+        .scanActiveSheetToInventoryOutlet();
+    } else {
+      setTimeout(function() {
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = '<span>⚡ Scan Sheet Aktif</span>';
+        }
+        showAuditStatus("info", "Simulasi scan sheet outlet (aktif di Google Sheets).");
+      }, 500);
+    }
+  }
+
+  function handleConvertJsonToOutlet() {
+    var txtEl = document.getElementById("txtJsonOutletInput");
+    var val = txtEl ? txtEl.value.trim() : "";
+    if (!val) {
+      showAuditStatus("error", "Tempelkan teks JSON inventori terlebih dahulu.");
+      return;
+    }
+
+    try {
+      JSON.parse(val);
+    } catch (e) {
+      showAuditStatus("error", "Format JSON tidak valid: " + e.message);
+      return;
+    }
+
+    if (hasGoogleScriptRun()) {
+      google.script.run
+        .withSuccessHandler(function(res) {
+          if (res && res.items && res.items.length > 0) {
+            displayOutletGsCodeResult(res);
+            CIAMSO_JSON_ITEMS = res.items;
+            updateOutletDisplayInfo(res);
+            if (ciamsoRawSelection) recomputeCiamsoComparison();
+            showAuditStatus("success", "✓ Berhasil mengonversi " + res.items.length + " item JSON ke format .gs!");
+          }
+        })
+        .withFailureHandler(function(err) {
+          showAuditStatus("error", "Gagal konversi JSON: " + (err.message || err));
+        })
+        .convertJsonToInventoryOutlet(val);
+    }
+  }
+
+  function displayOutletGsCodeResult(res) {
+    activeOutletDataPayload = res;
+    var outBox = document.getElementById("outletGeneratorOutput");
+    if (outBox) outBox.classList.remove("hidden");
+
+    var badge = document.getElementById("outletOutputStatusBadge");
+    if (badge) badge.textContent = "✓ " + res.items.length + " Item (" + res.outletName + " - " + res.periode + ")";
+
+    var txtPreview = document.getElementById("txtOutletGsCodePreview");
+    if (txtPreview) {
+      txtPreview.value = res.gsCode || "";
+    }
+  }
+
+  function copyOutletGsCode() {
+    var txt = document.getElementById("txtOutletGsCodePreview");
+    if (!txt || !txt.value) {
+      showAuditStatus("error", "Tidak ada kode .gs untuk disalin. Scan atau konversi terlebih dahulu.");
+      return;
+    }
+    navigator.clipboard.writeText(txt.value).then(function() {
+      showAuditStatus("success", "✓ Kode DataInventoryOutlet.gs berhasil disalin ke clipboard!");
+    }).catch(function() {
+      txt.select();
+      document.execCommand("copy");
+      showAuditStatus("success", "✓ Kode disalin!");
+    });
+  }
+
+  function downloadOutletGsCode() {
+    var txt = document.getElementById("txtOutletGsCodePreview");
+    if (!txt || !txt.value) return;
+    var filename = "DataInventoryOutlet.gs";
+    var blob = new Blob([txt.value], { type: "text/plain;charset=utf-8" });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showAuditStatus("success", "✓ Mengunduh " + filename);
   }
 </script>

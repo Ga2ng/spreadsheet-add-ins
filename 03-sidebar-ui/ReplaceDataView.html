@@ -934,14 +934,27 @@ Fitur:
   var selectionRowsData = [];
 
   window.initReplaceDataView = function() {
+    if (typeof google !== "undefined" && google.script && google.script.run) {
+      google.script.run
+        .withSuccessHandler(function(res) {
+          if (res && Array.isArray(res.items) && res.items.length > 0) {
+            CIAMSO_ITEMS = res.items;
+            window.CIAMSO_OCT_INVENTORY = CIAMSO_ITEMS;
+            populateCiamsoDropdown(true);
+          }
+        })
+        .getInventoryOutletData();
+    }
     populateCiamsoDropdown();
   };
 
-  function populateCiamsoDropdown() {
+  function populateCiamsoDropdown(forceRefresh) {
     var sel = document.getElementById("selectCiamsoBahanTarget");
-    if (!sel || sel.options.length > 2) return;
+    if (!sel) return;
+    if (!forceRefresh && sel.options.length > 2) return;
 
-    sel.innerHTML = '<option value="">-- Pilih Bahan dari Database Ciamso (116 Item) --</option>';
+    var countText = CIAMSO_ITEMS.length + " Item";
+    sel.innerHTML = '<option value="">-- Pilih Bahan dari Database Outlet (' + countText + ') --</option>';
     CIAMSO_ITEMS.forEach(function(it) {
       var opt = document.createElement("option");
       opt.value = it.id;

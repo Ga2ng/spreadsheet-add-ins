@@ -494,7 +494,7 @@ var CENTRAL_STORAGE_ROWS = [
  * (Mendukung Multi-Select: bisa centang 1 atau lebih dari 1 dataset sekaligus).
  */
 function getBuiltInReferenceDatasets() {
-  return [
+  var list = [
     {
       id: "inv-central-kitchen",
       name: "Central Kitchen",
@@ -512,4 +512,14 @@ function getBuiltInReferenceDatasets() {
       data: unpackCompactInventory("CENTRAL STORAGE", CENTRAL_STORAGE_PERIODS, CENTRAL_STORAGE_ROWS)
     }
   ];
+
+  // Integrasi slot dinamis Data Inventory Outlet jika tersedia
+  if (typeof getInventoryOutletDatasetForMenu02 === "function") {
+    var outletDs = getInventoryOutletDatasetForMenu02();
+    if (outletDs) {
+      list.push(outletDs);
+    }
+  }
+
+  return list;
 }

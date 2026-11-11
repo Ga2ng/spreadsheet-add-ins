@@ -1,0 +1,552 @@
+<!--
+===============================================================================
+MENU 07: PARSER & DATABASE HPP CENTRAL KITCHEN (HppCentralParserView.html)
+===============================================================================
+Fitur:
+1. Membaca data real-time dari sheet "HPP CENTRAL OKTOBER 26".
+2. Menghubungkan nama Preparetion (FULL UPPERCASE) dengan baris HPP & Selling Price.
+3. Otomatis tersimpan sebagai basis data backend "HPP_CENTRAL_OKT_DATA.gs".
+4. Fitur Pencarian Cepat (Live Search) langsung di Menu 07 per nama menu.
+5. Ekspor & Unduh:
+   - Unduh / Salin HPP_CENTRAL_OKT_DATA.gs
+   - Unduh / Salin Format JSON
+===============================================================================
+-->
+<div id="viewHppCentralParser" class="space-y-3">
+
+  <!-- STEP 1: INFO SHEET & KONTROL UTAMA -->
+  <section class="bg-white rounded-lg border border-slate-200 p-3.5 shadow-sm space-y-2.5">
+    <div class="flex items-start justify-between gap-2">
+      <div>
+        <h2 class="text-xs font-bold uppercase tracking-wider text-emerald-800">
+          07. Parser &amp; Database HPP Central
+        </h2>
+        <p class="text-[11px] text-slate-500">
+          Database <code class="font-mono text-emerald-700 font-semibold">HPP_CENTRAL_OKT_DATA</code> dari sheet <b>HPP CENTRAL OKTOBER 26</b> (58 Preparation).
+        </p>
+      </div>
+      <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 shrink-0">
+        Oktober 26
+      </span>
+    </div>
+
+    <!-- PENCARIAN CEPAT MENU DI MENU 07 -->
+    <div class="bg-slate-50 border border-slate-200 rounded-md p-2.5 space-y-1.5">
+      <label for="inputQuickSearchMenu07" class="block text-[11px] font-bold text-slate-700 flex items-center justify-between">
+        <span>🔍 Cari Menu di HPP_CENTRAL_OKT_DATA:</span>
+        <span id="lblQuickSearchMatchCount" class="text-[10px] text-emerald-700 font-semibold"></span>
+      </label>
+      <div class="flex items-center gap-1.5">
+        <input
+          id="inputQuickSearchMenu07"
+          type="text"
+          placeholder="Ketik nama menu (misal: CHARSIU, BEBEK, MIE, KALDU)..."
+          oninput="handleQuickSearchMenu07(this.value)"
+          class="flex-1 px-2.5 py-1.5 text-xs font-semibold border border-slate-300 rounded bg-white text-slate-800 focus:ring-1 focus:ring-emerald-500 shadow-sm"
+        />
+        <button
+          type="button"
+          onclick="document.getElementById('inputQuickSearchMenu07').value=''; handleQuickSearchMenu07('');"
+          class="px-2 py-1.5 text-[10px] font-bold text-slate-500 hover:text-slate-800 border rounded bg-white shrink-0"
+        >
+          Reset
+        </button>
+      </div>
+    </div>
+
+    <!-- TOMBOL SCAN REAL-TIME DARI SHEET -->
+    <button
+      id="btnScanHppCentralNow"
+      type="button"
+      onclick="handleScanHppCentralNow()"
+      class="w-full py-2.5 px-3 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-xs font-bold rounded shadow flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+    >
+      <span>⚡ 1. Scan Ulang Data dari Sheet "HPP CENTRAL OKTOBER 26"</span>
+    </button>
+  </section>
+
+  <!-- HASIL PARSER & DATABASE -->
+  <div id="hppCentralResultsContainer" class="space-y-3">
+
+    <!-- STATISTIK RINGKASAN -->
+    <section class="grid grid-cols-3 gap-2">
+      <div class="bg-white p-2.5 rounded-lg border border-slate-200 shadow-xs text-center">
+        <span class="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Total Menu</span>
+        <div class="flex items-center justify-center gap-1 mt-0.5">
+          <span id="lblHppCentralTotalMenu" class="text-base font-extrabold text-emerald-700 font-mono">0</span>
+          <span class="text-[10px] text-slate-400 font-bold">/ 58</span>
+        </div>
+      </div>
+      <div class="bg-white p-2.5 rounded-lg border border-slate-200 shadow-xs text-center">
+        <span class="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Rata-rata HPP</span>
+        <div id="lblHppCentralAvgHpp" class="text-xs font-bold text-slate-800 font-mono mt-1">Rp 0</div>
+      </div>
+      <div class="bg-white p-2.5 rounded-lg border border-slate-200 shadow-xs text-center">
+        <span class="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Avg Selling</span>
+        <div id="lblHppCentralAvgSelling" class="text-xs font-bold text-slate-800 font-mono mt-1">Rp 0</div>
+      </div>
+    </section>
+
+    <!-- TAB TAMPILAN: TABEL VS KODE .GS VS JSON -->
+    <section class="bg-white rounded-lg border border-slate-200 p-3 shadow-sm space-y-2.5">
+      <div class="flex items-center justify-between border-b border-slate-200 pb-2">
+        <div class="flex gap-1 text-[11px] font-bold">
+          <button
+            id="tabBtnHppTable"
+            type="button"
+            onclick="switchHppCentralTab('table')"
+            class="py-1 px-2.5 rounded border-b-2 border-emerald-600 text-emerald-800 bg-emerald-50/70"
+          >
+            📋 Tabel Menu (<span id="lblTabCountMenu">0</span>)
+          </button>
+          <button
+            id="tabBtnHppGsCode"
+            type="button"
+            onclick="switchHppCentralTab('gscode')"
+            class="py-1 px-2.5 rounded border-b-2 border-transparent text-slate-500 hover:text-slate-800"
+          >
+            💾 HPP_CENTRAL_OKT_DATA.gs
+          </button>
+          <button
+            id="tabBtnHppJson"
+            type="button"
+            onclick="switchHppCentralTab('json')"
+            class="py-1 px-2.5 rounded border-b-2 border-transparent text-slate-500 hover:text-slate-800"
+          >
+            📦 JSON
+          </button>
+        </div>
+        <span id="lblHppCentralScannedAt" class="text-[9px] text-slate-400 font-mono">-</span>
+      </div>
+
+      <!-- PANEL 1: TABEL DATA MENU -->
+      <div id="panelHppCentralTable" class="space-y-2">
+        <!-- LIST CONTAINER TABEL -->
+        <div
+          id="hppCentralTableBody"
+          class="max-h-80 overflow-y-auto border border-slate-200 rounded divide-y divide-slate-100 text-xs bg-white"
+        >
+          <!-- Diisi dinamis -->
+        </div>
+      </div>
+
+      <!-- PANEL 2: FORMAT KODE APPS SCRIPT (.GS) -->
+      <div id="panelHppCentralGsCode" class="hidden space-y-2.5">
+        <div class="flex items-center justify-between gap-2">
+          <span class="text-[11px] font-bold text-slate-700">File Backend: <code>HPP_CENTRAL_OKT_DATA.gs</code></span>
+          <div class="flex items-center gap-1.5">
+            <button
+              type="button"
+              onclick="handleCopyHppCentralGsCode()"
+              class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold rounded shadow-sm flex items-center gap-1 cursor-pointer"
+            >
+              <span>📋 Salin Kode .gs</span>
+            </button>
+            <button
+              type="button"
+              onclick="handleDownloadHppCentralGsCode()"
+              class="px-2.5 py-1 bg-slate-800 hover:bg-slate-900 text-white text-[11px] font-bold rounded shadow-sm flex items-center gap-1 cursor-pointer"
+            >
+              <span>💾 Unduh .gs</span>
+            </button>
+          </div>
+        </div>
+
+        <textarea
+          id="txtHppCentralGsCodeOutput"
+          readonly
+          rows="13"
+          class="w-full p-2.5 bg-slate-900 text-emerald-300 font-mono text-[10px] rounded border border-slate-700 focus:outline-none"
+        ></textarea>
+      </div>
+
+      <!-- PANEL 3: FORMAT JSON & EXPORT -->
+      <div id="panelHppCentralJson" class="hidden space-y-2.5">
+        <div class="flex items-center justify-between gap-2">
+          <span class="text-[11px] font-bold text-slate-700">Data JSON:</span>
+          <div class="flex items-center gap-1.5">
+            <button
+              type="button"
+              onclick="handleCopyHppCentralJson()"
+              class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold rounded shadow-sm flex items-center gap-1 cursor-pointer"
+            >
+              <span>📋 Salin JSON</span>
+            </button>
+            <button
+              type="button"
+              onclick="handleDownloadHppCentralJson()"
+              class="px-2.5 py-1 bg-slate-800 hover:bg-slate-900 text-white text-[11px] font-bold rounded shadow-sm flex items-center gap-1 cursor-pointer"
+            >
+              <span>💾 Unduh .json</span>
+            </button>
+          </div>
+        </div>
+
+        <textarea
+          id="txtHppCentralJsonOutput"
+          readonly
+          rows="13"
+          class="w-full p-2.5 bg-slate-900 text-sky-300 font-mono text-[10px] rounded border border-slate-700 focus:outline-none"
+        ></textarea>
+      </div>
+
+    </section>
+
+  </div>
+
+</div>
+
+<script>
+(function() {
+  // State
+  var hppCentralData = [];
+  var lastParsedPayload = null;
+  var currentTab = "table";
+
+  window.initHppCentralParserView = function() {
+    // Otomatis muat data dari backend saat Menu 07 dibuka
+    if (hasGoogleScriptRun()) {
+      google.script.run
+        .withSuccessHandler(function(res) {
+          if (res && res.data && res.data.length > 0) {
+            renderHppCentralResults(res);
+          }
+        })
+        .getHppCentralOktData();
+    } else {
+      // Demo browser fallback
+      loadDemoHppCentralData();
+    }
+  };
+
+  function loadDemoHppCentralData() {
+    var demoData = {
+      sourceSheet: "HPP CENTRAL OKTOBER 26 (Demo)",
+      parsedAt: new Date().toISOString(),
+      totalMenu: 3,
+      stats: { totalMenu: 3, expectedTotal: 58, avgHpp: 5454, avgSellingPrice: 6272 },
+      data: [
+        {
+          no: 1,
+          preparation: "AYAM CHARSIU REGULER",
+          notes: [],
+          porsi: 7,
+          hpp: 11421.78,
+          hppDisplay: "Rp 11.421,78",
+          sellingPrice: 13135.04,
+          sellingPriceDisplay: "Rp 13.135,04",
+          marginNominal: 1713.26,
+          marginPercent: 13,
+          sheetRow: 16
+        },
+        {
+          no: 2,
+          preparation: "AYAM CHARSIU PROMO",
+          notes: ["mentah = 71 gr", "matang = 45-50 gr"],
+          porsi: 14,
+          hpp: 4741.16,
+          hppDisplay: "Rp 4.741,16",
+          sellingPrice: 5452.33,
+          sellingPriceDisplay: "Rp 5.452,33",
+          marginNominal: 711.17,
+          marginPercent: 13,
+          sheetRow: 32
+        },
+        {
+          no: 3,
+          preparation: "KUAH KALDU WIP",
+          notes: ["1 resep = 12 liter", "1 liter = 66 porsi", "1 porsi = 15 ml"],
+          porsi: 792,
+          hpp: 199.72,
+          hppDisplay: "Rp 199,72",
+          sellingPrice: 229.68,
+          sellingPriceDisplay: "Rp 229,68",
+          marginNominal: 29.96,
+          marginPercent: 13,
+          sheetRow: 48
+        }
+      ]
+    };
+    renderHppCentralResults(demoData);
+  }
+
+  /**
+   * Scan data secara real-time dari sheet HPP CENTRAL OKTOBER 26
+   */
+  window.handleScanHppCentralNow = function() {
+    var btn = document.getElementById("btnScanHppCentralNow");
+    btn.disabled = true;
+    btn.innerHTML = '<span class="animate-spin inline-block">⏳</span> Memindai Sheet HPP CENTRAL OKTOBER 26...';
+
+    if (hasGoogleScriptRun()) {
+      google.script.run
+        .withSuccessHandler(function(res) {
+          btn.disabled = false;
+          btn.innerHTML = '<span>⚡ 1. Scan Ulang Data dari Sheet "HPP CENTRAL OKTOBER 26"</span>';
+          if (!res || !res.data) {
+            showAuditStatus("error", "Data tidak ditemukan atau kosong.");
+            return;
+          }
+          renderHppCentralResults(res);
+          showAuditStatus("success", "BERHASIL! " + res.totalMenu + " menu dari sheet '" + res.sourceSheet + "' telah disimpan ke HPP_CENTRAL_OKT_DATA!");
+        })
+        .withFailureHandler(function(err) {
+          btn.disabled = false;
+          btn.innerHTML = '<span>⚡ 1. Scan Ulang Data dari Sheet "HPP CENTRAL OKTOBER 26"</span>';
+          showAuditStatus("error", "Gagal memindai: " + err.message);
+        })
+        .parseHppCentralOktober26({});
+    } else {
+      setTimeout(function() {
+        btn.disabled = false;
+        btn.innerHTML = '<span>⚡ 1. Scan Ulang Data dari Sheet "HPP CENTRAL OKTOBER 26"</span>';
+        loadDemoHppCentralData();
+        showAuditStatus("success", "(Demo) Berhasil mem-parse dan menyimpan HPP_CENTRAL_OKT_DATA.");
+      }, 500);
+    }
+  };
+
+  /**
+   * Pencarian Cepat di Menu 07
+   */
+  window.handleQuickSearchMenu07 = function(query) {
+    if (!query || !query.trim()) {
+      renderTableList(hppCentralData);
+      var lblCount = document.getElementById("lblQuickSearchMatchCount");
+      if (lblCount) lblCount.textContent = "";
+      return;
+    }
+
+    var q = query.trim().toLowerCase();
+    var filtered = hppCentralData.filter(function(it) {
+      return (it.preparation && it.preparation.toLowerCase().indexOf(q) !== -1) ||
+             (it.notes && it.notes.some(function(n) { return n.toLowerCase().indexOf(q) !== -1; }));
+    });
+
+    renderTableList(filtered);
+
+    var lblCount = document.getElementById("lblQuickSearchMatchCount");
+    if (lblCount) {
+      lblCount.textContent = filtered.length + " ditemukan";
+    }
+  };
+
+  /**
+   * Menampilkan hasil ke tabel, .gs code box, dan JSON box
+   */
+  function renderHppCentralResults(payload) {
+    lastParsedPayload = payload;
+    hppCentralData = payload.data || [];
+
+    var box = document.getElementById("hppCentralResultsContainer");
+    if (box) box.classList.remove("hidden");
+
+    // Update Stats
+    document.getElementById("lblHppCentralTotalMenu").textContent = payload.totalMenu || hppCentralData.length;
+    document.getElementById("lblTabCountMenu").textContent = payload.totalMenu || hppCentralData.length;
+    if (payload.stats) {
+      document.getElementById("lblHppCentralAvgHpp").textContent = "Rp " + formatIDR(payload.stats.avgHpp);
+      document.getElementById("lblHppCentralAvgSelling").textContent = "Rp " + formatIDR(payload.stats.avgSellingPrice);
+    }
+
+    if (payload.parsedAt) {
+      var d = new Date(payload.parsedAt);
+      document.getElementById("lblHppCentralScannedAt").textContent = "Update: " + d.toLocaleTimeString("id-ID");
+    }
+
+    // Update .gs Code Box
+    var gsCodeTxt = document.getElementById("txtHppCentralGsCodeOutput");
+    if (gsCodeTxt) {
+      if (payload.gsCode) {
+        gsCodeTxt.value = payload.gsCode;
+      } else {
+        gsCodeTxt.value = generateClientGsCode(payload);
+      }
+    }
+
+    // Update JSON Box
+    var jsonTxt = document.getElementById("txtHppCentralJsonOutput");
+    if (jsonTxt) {
+      jsonTxt.value = JSON.stringify(payload, null, 2);
+    }
+
+    renderTableList(hppCentralData);
+  }
+
+  function generateClientGsCode(payload) {
+    var dataArr = payload.data || [];
+    return "/**\n" +
+      " * HPP_CENTRAL_OKT_DATA.gs\n" +
+      " * Total Menu: " + dataArr.length + " / 58 Preparation\n" +
+      " */\n\n" +
+      "var HPP_CENTRAL_OKT_DATA = " + JSON.stringify(dataArr, null, 2) + ";\n\n" +
+      "function getHppCentralOktData() {\n" +
+      "  return {\n" +
+      "    sourceSheet: " + JSON.stringify(payload.sourceSheet || "HPP CENTRAL OKTOBER 26") + ",\n" +
+      "    totalMenu: " + dataArr.length + ",\n" +
+      "    expectedTotal: 58,\n" +
+      "    data: HPP_CENTRAL_OKT_DATA\n" +
+      "  };\n" +
+      "}";
+  }
+
+  function renderTableList(list) {
+    var container = document.getElementById("hppCentralTableBody");
+    if (!container) return;
+
+    if (!list || list.length === 0) {
+      container.innerHTML = '<div class="p-4 text-center text-slate-400 text-xs">Tidak ada data menu yang cocok dengan pencarian.</div>';
+      return;
+    }
+
+    var html = list.map(function(item) {
+      var marginBadge = "";
+      if (item.marginPercent !== null && !isNaN(item.marginPercent)) {
+        var badgeColor = item.marginPercent >= 15 ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800';
+        marginBadge = '<span class="text-[9px] font-bold px-1.5 py-0.5 rounded ' + badgeColor + '">' + item.marginPercent + '%</span>';
+      }
+
+      var notesHtml = "";
+      if (item.notes && item.notes.length > 0) {
+        notesHtml = '<div class="text-[9px] text-slate-400 italic truncate max-w-[260px]" title="' + escapeHtml(item.notes.join(' • ')) + '">' +
+          'Catatan: ' + escapeHtml(item.notes.join(' • ')) +
+        '</div>';
+      }
+
+      return '<div class="p-2.5 bg-white hover:bg-slate-50 transition-colors flex items-start justify-between gap-2 text-xs border-b border-slate-100">' +
+        '<div class="flex items-start gap-2 flex-1 min-w-0">' +
+          '<span class="font-bold text-slate-400 text-[10px] pt-0.5">#' + item.no + '</span>' +
+          '<div class="flex-1 min-w-0 space-y-0.5">' +
+            '<div class="font-bold text-slate-900 text-xs truncate" title="' + escapeHtml(item.preparation) + '">' +
+              escapeHtml(item.preparation) +
+            '</div>' +
+            '<div class="text-[10px] text-slate-500 flex items-center gap-2">' +
+              '<span>Porsi: <b>' + (item.porsi || 1) + '</b></span>' +
+              '<span>•</span>' +
+              '<span class="font-mono text-slate-400">Row ' + (item.sheetRow || "-") + '</span>' +
+            '</div>' +
+            notesHtml +
+          '</div>' +
+        '</div>' +
+        '<div class="text-right shrink-0 space-y-0.5">' +
+          '<div class="flex items-center justify-end gap-1.5">' +
+            '<span class="text-[10px] text-slate-400">HPP:</span>' +
+            '<span class="font-mono font-bold text-slate-800">Rp ' + formatIDR(item.hpp) + '</span>' +
+          '</div>' +
+          '<div class="flex items-center justify-end gap-1.5">' +
+            '<span class="text-[10px] text-emerald-600 font-semibold">Selling:</span>' +
+            '<span class="font-mono font-bold text-emerald-700">Rp ' + formatIDR(item.sellingPrice) + '</span>' +
+            marginBadge +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    }).join("");
+
+    container.innerHTML = html;
+  }
+
+  window.switchHppCentralTab = function(tab) {
+    currentTab = tab;
+    var btnTable = document.getElementById("tabBtnHppTable");
+    var btnGsCode = document.getElementById("tabBtnHppGsCode");
+    var btnJson = document.getElementById("tabBtnHppJson");
+    var panelTable = document.getElementById("panelHppCentralTable");
+    var panelGsCode = document.getElementById("panelHppCentralGsCode");
+    var panelJson = document.getElementById("panelHppCentralJson");
+
+    if (btnTable) btnTable.className = "py-1 px-2.5 rounded border-b-2 border-transparent text-slate-500 hover:text-slate-800 font-bold";
+    if (btnGsCode) btnGsCode.className = "py-1 px-2.5 rounded border-b-2 border-transparent text-slate-500 hover:text-slate-800 font-bold";
+    if (btnJson) btnJson.className = "py-1 px-2.5 rounded border-b-2 border-transparent text-slate-500 hover:text-slate-800 font-bold";
+
+    if (panelTable) panelTable.classList.add("hidden");
+    if (panelGsCode) panelGsCode.classList.add("hidden");
+    if (panelJson) panelJson.classList.add("hidden");
+
+    if (tab === "table") {
+      if (btnTable) btnTable.className = "py-1 px-2.5 rounded border-b-2 border-emerald-600 text-emerald-800 bg-emerald-50/70 font-bold";
+      if (panelTable) panelTable.classList.remove("hidden");
+    } else if (tab === "gscode") {
+      if (btnGsCode) btnGsCode.className = "py-1 px-2.5 rounded border-b-2 border-emerald-600 text-emerald-800 bg-emerald-50/70 font-bold";
+      if (panelGsCode) panelGsCode.classList.remove("hidden");
+    } else {
+      if (btnJson) btnJson.className = "py-1 px-2.5 rounded border-b-2 border-emerald-600 text-emerald-800 bg-emerald-50/70 font-bold";
+      if (panelJson) panelJson.classList.remove("hidden");
+    }
+  };
+
+  window.handleCopyHppCentralGsCode = function() {
+    var txt = document.getElementById("txtHppCentralGsCodeOutput");
+    if (!txt || !txt.value) {
+      showAuditStatus("warning", "Belum ada kode .gs untuk disalin.");
+      return;
+    }
+    navigator.clipboard.writeText(txt.value).then(function() {
+      showAuditStatus("success", "✓ Berhasil menyalin kode HPP_CENTRAL_OKT_DATA.gs ke clipboard!");
+    }).catch(function() {
+      txt.select();
+      document.execCommand("copy");
+      showAuditStatus("success", "✓ Berhasil menyalin kode HPP_CENTRAL_OKT_DATA.gs ke clipboard!");
+    });
+  };
+
+  window.handleDownloadHppCentralGsCode = function() {
+    var txt = document.getElementById("txtHppCentralGsCodeOutput");
+    if (!txt || !txt.value) {
+      showAuditStatus("warning", "Belum ada kode .gs untuk diunduh.");
+      return;
+    }
+    var blob = new Blob([txt.value], { type: "text/plain;charset=utf-8;" });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url;
+    a.download = "HPP_CENTRAL_OKT_DATA.gs";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showAuditStatus("success", "✓ File HPP_CENTRAL_OKT_DATA.gs berhasil diunduh!");
+  };
+
+  window.handleCopyHppCentralJson = function() {
+    var jsonTxt = document.getElementById("txtHppCentralJsonOutput");
+    if (!jsonTxt || !jsonTxt.value) {
+      showAuditStatus("warning", "Belum ada data JSON untuk disalin.");
+      return;
+    }
+    navigator.clipboard.writeText(jsonTxt.value).then(function() {
+      showAuditStatus("success", "✓ Berhasil menyalin data JSON ke clipboard!");
+    }).catch(function() {
+      jsonTxt.select();
+      document.execCommand("copy");
+      showAuditStatus("success", "✓ Berhasil menyalin data JSON ke clipboard!");
+    });
+  };
+
+  window.handleDownloadHppCentralJson = function() {
+    var jsonTxt = document.getElementById("txtHppCentralJsonOutput");
+    if (!jsonTxt || !jsonTxt.value) {
+      showAuditStatus("warning", "Belum ada data JSON untuk diunduh.");
+      return;
+    }
+    var blob = new Blob([jsonTxt.value], { type: "application/json;charset=utf-8;" });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url;
+    a.download = "HPP_CENTRAL_OKTOBER_26_" + new Date().toISOString().slice(0, 10) + ".json";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showAuditStatus("success", "✓ File JSON berhasil diunduh!");
+  };
+
+  function escapeHtml(str) {
+    return String(str || "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+})();
+</script>

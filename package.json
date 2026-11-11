@@ -5,6 +5,7 @@
   "description": "Audit Data Tools - Google Spreadsheet Sidebar Add-on (Auto-Merge Kitchen & Storage)",
   "scripts": {
     "convert": "node scripts/convert-json.js",
+    "convert:outlet": "node scripts/convert-outlet-json.js",
     "sync": "node scripts/convert-json.js",
     "login": "npx @google/clasp login",
     "login:beda-gmail": "npx @google/clasp login --no-localhost",
