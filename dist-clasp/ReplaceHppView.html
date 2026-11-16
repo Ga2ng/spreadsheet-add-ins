@@ -1,182 +1,380 @@
 <!--
 ===============================================================================
-MENU 03: REPLACE DATA BERDASARKAN SEL YANG DIBLOK (ReplaceHppView.html)
+MENU 03: REPLACE DATA SHEET AKTIF (ReplaceHppView.html)
 ===============================================================================
-Alur Kerja:
-1. User blok sel di Google Sheets (misal: "ayam grill" atau baris bahan).
-2. Klik tombol "1. Baca Sel yang Sedang Diblok":
-   - Sistem membaca isi sel acuan tersebut.
-   - Otomatis mencari seluruh baris di sheet aktif yang memiliki data yang SAMA.
-   - Melaporkan jumlah data yang sama ditemukan di seluruh sheet.
-3. User memilih:
-   - Kolom mana yang ingin diganti (dropdown otomatis membaca nama kolom di sheet).
-   - Nilai baru penggantinya (angka / teks).
-4. Klik tombol "⚡ REPLACE ALL":
-   - Mengganti seluruh sel target yang sama di sheet dalam 1 klik.
-   - Mewarnai seluruh sel yang diganti dengan warna hijau muda (#dcfce7).
+Dua Mode Operasi:
+1. Mode 🎯 1. Per Sel yang Diblok (Fitur Bawaan):
+   - User blok sel di sheet → sistem mencari data sama di sheet → pilih kolom yang diganti → Replace All warna hijau.
+2. Mode 📑 2. Scan All Bahan di Sheet (Fitur Baru):
+   - Scan seluruh sheet untuk mendeteksi semua bahan dari semua resep.
+   - Mengelist semua bahan unik tanpa perlu mencari / menggeser sheet ke bawah.
+   - User memilih mau diganti kolom mana (misal: HARGA / KEMASAN, KEMASAN, dsb.).
+   - Bisa ganti per bahan langsung atau ganti massal untuk bahan-bahan terpilih.
+   - Mewarnai seluruh sel yang diubah dengan warna hijau muda (#dcfce7).
 ===============================================================================
 -->
-<div id="viewReplaceHpp" class="space-y-3">
+<div id="viewReplaceHpp" class="hidden space-y-3">
 
-  <!-- STEP 1: BACA SEL YANG SEDANG DIBLOK -->
-  <section class="bg-white rounded-lg border border-slate-200 p-3.5 shadow-sm space-y-2.5">
-    <div class="flex items-start justify-between gap-2">
-      <div>
-        <h2 class="text-xs font-bold uppercase tracking-wider text-emerald-800">
-          03. Replace All Berdasarkan Sel yang Diblok
-        </h2>
-        <p class="text-[11px] text-slate-500">
-          Blok sel di sheet → sistem mencari semua data yang sama di sheet → pilih kolom yang diganti → Replace All warna hijau.
-        </p>
-      </div>
-      <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 shrink-0">
-        Sheet Aktif
-      </span>
-    </div>
-
-    <!-- TOMBOL 1: BACA SEL YANG DIBLOK -->
+  <!-- DUAL SUB-TAB NAVIGATION MENU 03 -->
+  <div class="flex border-b border-emerald-600/30 bg-emerald-900/10 rounded-t-lg p-1 gap-1">
     <button
-      id="btnReadBlockedCell"
+      id="tabBtnMenu03Block"
       type="button"
-      onclick="handleReadBlockedCell()"
-      class="w-full py-2.5 px-3 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-xs font-bold rounded shadow flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+      onclick="switchMenu03SubTab('block')"
+      class="flex-1 py-1.5 px-2 text-center text-xs font-bold rounded-md bg-white text-emerald-800 shadow-sm border border-emerald-200 transition cursor-pointer"
     >
-      <span>🔍 1. Baca Sel yang Sedang Diblok di Sheet</span>
+      🎯 1. Per Sel yang Diblok
     </button>
-  </section>
+    <button
+      id="tabBtnMenu03ScanAll"
+      type="button"
+      onclick="switchMenu03SubTab('scanall')"
+      class="flex-1 py-1.5 px-2 text-center text-xs font-bold rounded-md text-slate-600 hover:text-emerald-800 hover:bg-white/60 transition cursor-pointer"
+    >
+      📑 2. Scan All Bahan di Sheet
+    </button>
+  </div>
 
-  <!-- STEP 2 & 3: PENGATURAN DATA ACUAN & KOLOM PENGGANTI (MUNCUL SETELAH DIBACA) -->
-  <div id="blockedCellDetailsBox" class="hidden space-y-3">
+  <!-- ========================================================================= -->
+  <!-- TAB 1: PER SEL YANG DIBLOK (FITUR BAWAAN - 100% DIPERTAHANKAN)            -->
+  <!-- ========================================================================= -->
+  <div id="panelMenu03Block" class="space-y-3">
 
-    <!-- INFO DATA ACUAN DARI SEL YANG DIBLOK -->
-    <section class="bg-white rounded-lg border border-slate-200 p-3.5 shadow-sm space-y-3">
-      <div class="flex items-center justify-between border-b border-slate-100 pb-2">
-        <span class="text-[11px] font-bold uppercase tracking-wide text-slate-700">
-          2. Data Acuan yang Sedang Diblok:
-        </span>
-        <span id="lblBlockedRangeAddr" class="font-mono text-[10px] font-bold bg-slate-100 text-slate-700 px-2 py-0.5 rounded border border-slate-200">
-          -
-        </span>
-      </div>
-
-      <!-- NILAI DATA ACUAN -->
-      <div class="bg-emerald-50/70 border border-emerald-200 rounded-md p-2.5 space-y-1.5">
-        <div class="flex items-center justify-between text-xs">
-          <span class="text-slate-500 text-[11px]">Data yang Dicari di Sheet:</span>
-          <span id="lblBlockedMatchCount" class="font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded border border-emerald-300 text-[11px]">
-            Memuat...
-          </span>
-        </div>
-        <div class="flex items-center gap-2">
-          <input
-            id="inputBlockedKeyword"
-            type="text"
-            oninput="handleBlockedKeywordManualChange(this.value)"
-            class="flex-1 font-mono font-bold text-xs text-emerald-950 bg-white border border-emerald-300 rounded px-2.5 py-1.5 shadow-sm focus:ring-1 focus:ring-emerald-500"
-            title="Data acuan yang dicari di sheet"
-          />
-          <button
-            type="button"
-            onclick="handleReScanMatches()"
-            class="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold rounded shadow-sm shrink-0"
-            title="Scan ulang kecocokan di sheet"
-          >
-            Scan Ulang
-          </button>
-        </div>
-        <!-- Pilihan jika yang diblok berupa baris beberapa kolom -->
-        <div id="blockedMultiCellsContainer" class="hidden pt-1 border-t border-emerald-200/60 flex flex-wrap gap-1"></div>
-      </div>
-
-      <!-- PILIH KOLOM MANA YANG INGIN DIGANTI -->
-      <div class="space-y-1">
-        <label for="selectTargetColToReplace" class="block text-[11px] font-bold text-slate-700">
-          🎯 Pilih Kolom Mana yang Ingin Diganti:
-        </label>
-        <select
-          id="selectTargetColToReplace"
-          onchange="handleSelectTargetColChange(this.value)"
-          class="w-full text-xs font-bold border border-slate-300 rounded px-2.5 py-1.5 bg-white text-slate-800 focus:ring-1 focus:ring-emerald-500 cursor-pointer shadow-sm"
-        >
-          <option value="">Memuat kolom sheet...</option>
-        </select>
-        <p class="text-[10px] text-slate-500">
-          Sistem otomatis mengganti nilai pada kolom ini untuk seluruh baris yang sama dengan data di atas.
-        </p>
-      </div>
-
-      <!-- NILAI BARU PENGGANTI -->
-      <div class="space-y-1">
-        <label for="inputBlockedNewValue" class="block text-[11px] font-bold text-emerald-800">
-          ⚡ Nilai Baru Pengganti:
-        </label>
-        <input
-          id="inputBlockedNewValue"
-          type="text"
-          placeholder="Ketik nilai baru (angka / teks / formula)..."
-          oninput="handleBlockedNewValueChange(this.value)"
-          class="w-full px-2.5 py-1.5 text-xs font-bold text-emerald-900 bg-white border border-emerald-400 rounded focus:ring-1 focus:ring-emerald-500 shadow-sm"
-        />
-      </div>
-
-      <!-- OPSI MATCH EXACT & WARNA HIJAU -->
-      <div class="space-y-1.5 pt-1 border-t border-slate-100 text-[11px]">
-        <label class="flex items-center gap-2 cursor-pointer select-none">
-          <input
-            id="chkBlockedMatchExact"
-            type="checkbox"
-            checked
-            onchange="handleReScanMatches()"
-            class="rounded text-emerald-600 focus:ring-emerald-500 w-3.5 h-3.5"
-          />
-          <span class="text-slate-700">Cocokkan Seluruh Isi Sel (Exact Match)</span>
-        </label>
-        <label class="flex items-center gap-2 cursor-pointer select-none">
-          <input
-            id="chkBlockedApplyGreen"
-            type="checkbox"
-            checked
-            class="rounded text-emerald-600 focus:ring-emerald-500 w-3.5 h-3.5"
-          />
-          <span class="text-slate-700 font-semibold text-emerald-800">
-            Beri warna latar <b class="bg-emerald-100 px-1 py-0.5 rounded border border-emerald-300">Hijau Muda (#dcfce7)</b> pada sel yang diubah
-          </span>
-        </label>
-      </div>
-    </section>
-
-    <!-- STEP 3: PRATINJAU SELURUH DATA YANG SAMA DI SHEET -->
+    <!-- STEP 1: BACA SEL YANG SEDANG DIBLOK -->
     <section class="bg-white rounded-lg border border-slate-200 p-3.5 shadow-sm space-y-2.5">
-      <div class="flex items-center justify-between text-xs pb-1.5 border-b border-slate-100">
+      <div class="flex items-start justify-between gap-2">
         <div>
-          <span class="font-bold text-slate-800" id="lblBlockedPreviewHeader">0 Baris Terpilih</span>
-          <div class="text-[10px] text-slate-500" id="lblBlockedPreviewSub">-</div>
+          <h2 class="text-xs font-bold uppercase tracking-wider text-emerald-800">
+            Replace Berdasarkan Sel yang Diblok
+          </h2>
+          <p class="text-[11px] text-slate-500">
+            Blok sel di sheet → sistem mencari semua data yang sama di sheet → pilih kolom yang diganti → Replace All warna hijau.
+          </p>
         </div>
-        <div class="flex items-center gap-1.5 text-[10px]">
-          <button type="button" onclick="handleToggleAllBlockedMatches(true)" class="text-emerald-700 hover:underline font-bold">Pilih Semua</button>
-          <span class="text-slate-300">|</span>
-          <button type="button" onclick="handleToggleAllBlockedMatches(false)" class="text-slate-500 hover:underline font-bold">Batal</button>
-        </div>
+        <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 shrink-0">
+          Sheet Aktif
+        </span>
       </div>
 
-      <!-- DAFTAR SELURUH DATA YANG SAMA -->
-      <div
-        id="blockedMatchesListContainer"
-        class="max-h-72 overflow-y-auto border border-slate-200 rounded divide-y divide-slate-100 text-xs bg-white"
-      >
-        <!-- Diisi dinamis -->
-      </div>
-
-      <!-- TOMBOL EKSEKUSI REPLACE ALL -->
+      <!-- TOMBOL BACA SEL YANG DIBLOK -->
       <button
-        id="btnExecuteBlockedReplaceAll"
+        id="btnReadBlockedCell"
         type="button"
-        onclick="handleExecuteBlockedReplaceAll()"
+        onclick="handleReadBlockedCell()"
         class="w-full py-2.5 px-3 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-xs font-bold rounded shadow flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
       >
-        <span>⚡ 2. REPLACE ALL DATA YANG SAMA DI SHEET (WARNA HIJAU)</span>
+        <span>🔍 1. Baca Sel yang Sedang Diblok di Sheet</span>
       </button>
     </section>
+
+    <!-- STEP 2 & 3: PENGATURAN DATA ACUAN & KOLOM PENGGANTI (MUNCUL SETELAH DIBACA) -->
+    <div id="blockedCellDetailsBox" class="hidden space-y-3">
+
+      <!-- INFO DATA ACUAN DARI SEL YANG DIBLOK -->
+      <section class="bg-white rounded-lg border border-slate-200 p-3.5 shadow-sm space-y-3">
+        <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+          <span class="text-[11px] font-bold uppercase tracking-wide text-slate-700">
+            2. Data Acuan yang Sedang Diblok:
+          </span>
+          <span id="lblBlockedRangeAddr" class="font-mono text-[10px] font-bold bg-slate-100 text-slate-700 px-2 py-0.5 rounded border border-slate-200">
+            -
+          </span>
+        </div>
+
+        <!-- NILAI DATA ACUAN -->
+        <div class="bg-emerald-50/70 border border-emerald-200 rounded-md p-2.5 space-y-1.5">
+          <div class="flex items-center justify-between text-xs">
+            <span class="text-slate-500 text-[11px]">Data yang Dicari di Sheet:</span>
+            <span id="lblBlockedMatchCount" class="font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded border border-emerald-300 text-[11px]">
+              Memuat...
+            </span>
+          </div>
+          <div class="flex items-center gap-2">
+            <input
+              id="inputBlockedKeyword"
+              type="text"
+              oninput="handleBlockedKeywordManualChange(this.value)"
+              class="flex-1 font-mono font-bold text-xs text-emerald-950 bg-white border border-emerald-300 rounded px-2.5 py-1.5 shadow-sm focus:ring-1 focus:ring-emerald-500"
+              title="Data acuan yang dicari di sheet"
+            />
+            <button
+              type="button"
+              onclick="handleReScanMatches()"
+              class="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold rounded shadow-sm shrink-0 cursor-pointer"
+              title="Scan ulang kecocokan di sheet"
+            >
+              Scan Ulang
+            </button>
+          </div>
+          <!-- Pilihan jika yang diblok berupa baris beberapa kolom -->
+          <div id="blockedMultiCellsContainer" class="hidden pt-1 border-t border-emerald-200/60 flex flex-wrap gap-1"></div>
+        </div>
+
+        <!-- PILIH KOLOM MANA YANG INGIN DIGANTI -->
+        <div class="space-y-1">
+          <label for="selectTargetColToReplace" class="block text-[11px] font-bold text-slate-700">
+            🎯 Pilih Kolom Mana yang Ingin Diganti:
+          </label>
+          <select
+            id="selectTargetColToReplace"
+            onchange="handleSelectTargetColChange(this.value)"
+            class="w-full text-xs font-bold border border-slate-300 rounded px-2.5 py-1.5 bg-white text-slate-800 focus:ring-1 focus:ring-emerald-500 cursor-pointer shadow-sm"
+          >
+            <option value="">Memuat kolom sheet...</option>
+          </select>
+          <p class="text-[10px] text-slate-500">
+            Sistem otomatis mengganti nilai pada kolom ini untuk seluruh baris yang sama dengan data di atas.
+          </p>
+        </div>
+
+        <!-- NILAI BARU PENGGANTI -->
+        <div class="space-y-1">
+          <label for="inputBlockedNewValue" class="block text-[11px] font-bold text-emerald-800">
+            ⚡ Nilai Baru Pengganti:
+          </label>
+          <input
+            id="inputBlockedNewValue"
+            type="text"
+            placeholder="Ketik nilai baru (angka / teks / formula)..."
+            oninput="handleBlockedNewValueChange(this.value)"
+            class="w-full px-2.5 py-1.5 text-xs font-bold text-emerald-900 bg-white border border-emerald-400 rounded focus:ring-1 focus:ring-emerald-500 shadow-sm"
+          />
+        </div>
+
+        <!-- OPSI MATCH EXACT & WARNA HIJAU -->
+        <div class="space-y-1.5 pt-1 border-t border-slate-100 text-[11px]">
+          <label class="flex items-center gap-2 cursor-pointer select-none">
+            <input
+              id="chkBlockedMatchExact"
+              type="checkbox"
+              checked
+              onchange="handleReScanMatches()"
+              class="rounded text-emerald-600 focus:ring-emerald-500 w-3.5 h-3.5"
+            />
+            <span class="text-slate-700">Cocokkan Seluruh Isi Sel (Exact Match)</span>
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer select-none">
+            <input
+              id="chkBlockedApplyGreen"
+              type="checkbox"
+              checked
+              class="rounded text-emerald-600 focus:ring-emerald-500 w-3.5 h-3.5"
+            />
+            <span class="text-slate-700 font-semibold text-emerald-800">
+              Beri warna latar <b class="bg-emerald-100 px-1 py-0.5 rounded border border-emerald-300">Hijau Muda (#dcfce7)</b> pada sel yang diubah
+            </span>
+          </label>
+        </div>
+      </section>
+
+      <!-- STEP 3: PRATINJAU SELURUH DATA YANG SAMA DI SHEET -->
+      <section class="bg-white rounded-lg border border-slate-200 p-3.5 shadow-sm space-y-2.5">
+        <div class="flex items-center justify-between text-xs pb-1.5 border-b border-slate-100">
+          <div>
+            <span class="font-bold text-slate-800" id="lblBlockedPreviewHeader">0 Baris Terpilih</span>
+            <div class="text-[10px] text-slate-500" id="lblBlockedPreviewSub">-</div>
+          </div>
+          <div class="flex items-center gap-1.5 text-[10px]">
+            <button type="button" onclick="handleToggleAllBlockedMatches(true)" class="text-emerald-700 hover:underline font-bold">Pilih Semua</button>
+            <span class="text-slate-300">|</span>
+            <button type="button" onclick="handleToggleAllBlockedMatches(false)" class="text-slate-500 hover:underline font-bold">Batal</button>
+          </div>
+        </div>
+
+        <!-- DAFTAR SELURUH DATA YANG SAMA -->
+        <div
+          id="blockedMatchesListContainer"
+          class="max-h-72 overflow-y-auto border border-slate-200 rounded divide-y divide-slate-100 text-xs bg-white"
+        >
+          <!-- Diisi dinamis -->
+        </div>
+
+        <!-- TOMBOL EKSEKUSI REPLACE ALL -->
+        <button
+          id="btnExecuteBlockedReplaceAll"
+          type="button"
+          onclick="handleExecuteBlockedReplaceAll()"
+          class="w-full py-2.5 px-3 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-xs font-bold rounded shadow flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+        >
+          <span>⚡ 2. REPLACE ALL DATA YANG SAMA DI SHEET (WARNA HIJAU)</span>
+        </button>
+      </section>
+
+    </div>
+
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- TAB 2: SCAN ALL BAHAN DI SHEET (FITUR BARU PENYESUAIAN)                    -->
+  <!-- ========================================================================= -->
+  <div id="panelMenu03ScanAll" class="hidden space-y-3">
+
+    <!-- STEP 1: TRIGGER SCAN ALL BAHAN -->
+    <section class="bg-white rounded-lg border border-slate-200 p-3.5 shadow-sm space-y-2.5">
+      <div class="flex items-start justify-between gap-2">
+        <div>
+          <h2 class="text-xs font-bold uppercase tracking-wider text-emerald-800">
+            Scan Seluruh Bahan di Sheet Aktif
+          </h2>
+          <p class="text-[11px] text-slate-500">
+            Mengumpulkan semua bahan dari seluruh resep di sheet ini. Anda bisa memilih kolom target yang ingin diganti (Harga Kemasan, Kemasan, Gramasi, dsb.) langsung dari daftar tanpa perlu menggeser sheet ke bawah.
+          </p>
+        </div>
+        <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 shrink-0">
+          Sheet Terbuka
+        </span>
+      </div>
+
+      <button
+        id="btnScanAllBahanMenu03"
+        type="button"
+        onclick="handleScanAllBahanMenu03()"
+        class="w-full py-2.5 px-3 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-xs font-bold rounded shadow flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+      >
+        <span>⚡ 1. Scan All Bahan di Sheet Saat Ini</span>
+      </button>
+
+      <!-- BANNER SHORTCUT MODELESS DIALOG (UI LUAS) -->
+      <div class="bg-gradient-to-r from-emerald-50 via-teal-50 to-emerald-50 border border-emerald-200 rounded-lg p-2.5 flex items-center justify-between gap-2 shadow-2xs">
+        <div class="flex items-center gap-2 min-w-0">
+          <span class="text-base shrink-0">🗖</span>
+          <div class="min-w-0">
+            <div class="font-bold text-emerald-950 text-xs">Modeless Dialog (UI Luas 1100px)</div>
+            <div class="text-[10px] text-emerald-700 truncate">Leluasa melihat seluruh bahan layaknya aplikasi web normal sambil tetap terhubung ke sheet.</div>
+          </div>
+        </div>
+        <button
+          type="button"
+          onclick="handleOpenModelessFromMenu03()"
+          class="px-2.5 py-1 bg-emerald-700 hover:bg-emerald-800 text-white text-[10px] font-bold rounded shadow-xs shrink-0 flex items-center gap-1 cursor-pointer transition"
+          title="Buka jendela mengambang Modeless lebar 1100px"
+        >
+          <span>🗖 Buka Layar Luas</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- STEP 2: HASIL SCAN & PENGATURAN KOLOM TARGET -->
+    <div id="scanAllResultsContainer" class="hidden space-y-3">
+
+      <!-- PENGATURAN KOLOM TARGET & FILTER -->
+      <section class="bg-white rounded-lg border border-slate-200 p-3.5 shadow-sm space-y-3">
+        <!-- HEADER RINGKASAN -->
+        <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+          <div>
+            <span id="lblScanAllStatsBadge" class="text-[11px] font-bold uppercase tracking-wide text-emerald-800">
+              0 Bahan Unik Ditemukan
+            </span>
+            <div id="lblScanAllSheetSub" class="text-[10px] text-slate-500">Dari 0 Resep</div>
+          </div>
+          <button
+            type="button"
+            onclick="handleScanAllBahanMenu03()"
+            class="text-[10px] font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 px-2 py-1 rounded border border-slate-200 shadow-2xs cursor-pointer"
+            title="Scan ulang seluruh bahan di sheet"
+          >
+            ↻ Scan Ulang
+          </button>
+        </div>
+
+        <!-- DROPDOWN & PENCARIAN CEPAT NAMA BAHAN (GRID 2 KOLOM RESPONSIF) -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+          <!-- DROPDOWN: PILIH KOLOM MANA YANG INGIN DIGANTI -->
+          <div class="bg-emerald-50/70 border border-emerald-200 rounded-md p-2.5 space-y-1">
+            <label for="selectScanAllTargetCol" class="block text-[11px] font-bold text-emerald-950">
+              🎯 Mau Diganti Bagian Kolom Mana di Sheet?
+            </label>
+            <select
+              id="selectScanAllTargetCol"
+              onchange="handleScanAllTargetColChange(this.value)"
+              class="w-full text-xs font-bold border border-emerald-400 rounded px-2.5 py-1.5 bg-white text-emerald-900 focus:ring-1 focus:ring-emerald-500 cursor-pointer shadow-sm"
+            >
+              <!-- Diisi dinamis -->
+            </select>
+            <p class="text-[10px] text-emerald-700">
+              Nilai pada kolom ini yang akan diubah untuk seluruh baris resep.
+            </p>
+          </div>
+
+          <!-- PENCARIAN CEPAT NAMA BAHAN -->
+          <div class="bg-slate-50 border border-slate-200 rounded-md p-2.5 space-y-1">
+            <label for="inputSearchBahanFilter" class="block text-[11px] font-bold text-slate-700">
+              🔍 Cari Bahan Cepat:
+            </label>
+            <div class="relative">
+              <input
+                id="inputSearchBahanFilter"
+                type="text"
+                placeholder="Ketik nama bahan (misal: fillet, wijen, knorr, lada)..."
+                oninput="handleSearchBahanFilterInput(this.value)"
+                class="w-full pl-2.5 pr-7 py-1.5 text-xs font-semibold text-slate-800 bg-white border border-slate-300 rounded focus:border-emerald-500 focus:outline-none shadow-xs"
+              />
+              <button
+                type="button"
+                onclick="clearSearchBahanFilter()"
+                id="btnClearSearchBahan"
+                class="hidden absolute right-2 top-1.5 text-slate-400 hover:text-slate-600 text-xs font-bold cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+            <p class="text-[10px] text-slate-500">
+              Filter instan saat mengetik tanpa perlu mencari satu per satu.
+            </p>
+          </div>
+        </div>
+
+        <!-- PILIH SEMUA / BATAL -->
+        <div class="flex items-center justify-between text-[11px] pt-1 border-t border-slate-100">
+          <span id="lblScanAllSelectedCount" class="font-bold text-slate-700">0 Bahan Terpilih</span>
+          <div class="flex items-center gap-2">
+            <button type="button" onclick="handleToggleAllBahanItems(true)" class="text-emerald-700 hover:underline font-bold text-[10px] cursor-pointer">Pilih Semua</button>
+            <span class="text-slate-300">|</span>
+            <button type="button" onclick="handleToggleAllBahanItems(false)" class="text-slate-500 hover:underline font-bold text-[10px] cursor-pointer">Batal</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- DAFTAR SELURUH BAHAN DENGAN INPUT NILAI BARU & AKSI REPLACE -->
+      <section class="bg-white rounded-lg border border-slate-200 p-3 shadow-sm space-y-2.5">
+        <div class="text-[10px] text-slate-500">
+          Ketik nilai baru pada bahan yang ingin diubah, lalu klik <strong>Replace</strong> pada barisnya atau gunakan <strong>Replace All Massal</strong> di bawah:
+        </div>
+
+        <div
+          id="scanAllBahanListContainer"
+          class="max-h-96 overflow-y-auto border border-slate-200 rounded divide-y divide-slate-100 text-xs bg-white"
+        >
+          <!-- Diisi dinamis per bahan -->
+        </div>
+
+        <!-- OPSI HIGHLIGHT HIJAU MUDA -->
+        <div class="pt-1.5 border-t border-slate-100 text-[11px]">
+          <label class="flex items-center gap-2 cursor-pointer select-none">
+            <input
+              id="chkScanAllApplyGreen"
+              type="checkbox"
+              checked
+              class="rounded text-emerald-600 focus:ring-emerald-500 w-3.5 h-3.5"
+            />
+            <span class="text-slate-700 font-semibold text-emerald-800">
+              Beri warna latar <b class="bg-emerald-100 px-1 py-0.5 rounded border border-emerald-300">Hijau Muda (#dcfce7)</b> pada sel yang diubah
+            </span>
+          </label>
+        </div>
+
+        <!-- TOMBOL REPLACE ALL MASSAL (UNTUK SEMUA BAHAN YANG DICENTANG) -->
+        <button
+          id="btnExecuteMassalScanAll"
+          type="button"
+          onclick="handleExecuteMassalScanAll()"
+          class="w-full py-2.5 px-3 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-xs font-bold rounded shadow flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+        >
+          <span>⚡ 2. REPLACE ALL BAHAN YANG DICENTANG (WARNA HIJAU)</span>
+        </button>
+      </section>
+
+    </div>
 
   </div>
 
@@ -184,7 +382,34 @@ Alur Kerja:
 
 <script>
 (function() {
-  // State
+  // =========================================================================
+  // SUB-TAB CONTROLLER MENU 03
+  // =========================================================================
+  var activeSubTab = "block"; // "block" atau "scanall"
+
+  window.switchMenu03SubTab = function(tab) {
+    activeSubTab = tab;
+    var btnBlock = document.getElementById("tabBtnMenu03Block");
+    var btnScanAll = document.getElementById("tabBtnMenu03ScanAll");
+    var pBlock = document.getElementById("panelMenu03Block");
+    var pScanAll = document.getElementById("panelMenu03ScanAll");
+
+    if (tab === "block") {
+      if (btnBlock) btnBlock.className = "flex-1 py-1.5 px-2 text-center text-xs font-bold rounded-md bg-white text-emerald-800 shadow-sm border border-emerald-200 transition cursor-pointer";
+      if (btnScanAll) btnScanAll.className = "flex-1 py-1.5 px-2 text-center text-xs font-bold rounded-md text-slate-600 hover:text-emerald-800 hover:bg-white/60 transition cursor-pointer";
+      if (pBlock) pBlock.classList.remove("hidden");
+      if (pScanAll) pScanAll.classList.add("hidden");
+    } else {
+      if (btnScanAll) btnScanAll.className = "flex-1 py-1.5 px-2 text-center text-xs font-bold rounded-md bg-white text-emerald-800 shadow-sm border border-emerald-200 transition cursor-pointer";
+      if (btnBlock) btnBlock.className = "flex-1 py-1.5 px-2 text-center text-xs font-bold rounded-md text-slate-600 hover:text-emerald-800 hover:bg-white/60 transition cursor-pointer";
+      if (pScanAll) pScanAll.classList.remove("hidden");
+      if (pBlock) pBlock.classList.add("hidden");
+    }
+  };
+
+  // =========================================================================
+  // STATE TAB 1: PER SEL YANG DIBLOK
+  // =========================================================================
   var lastSelection = null;
   var currentKeyword = "";
   var currentTargetColIndex = null;
@@ -225,7 +450,6 @@ Alur Kerja:
       setTimeout(function() {
         btn.disabled = false;
         btn.innerHTML = '<span>🔍 1. Baca Ulang Sel yang Sedang Diblok</span>';
-        // Demo di browser
         processReadBlockedSelection({
           sheetName: "HPP CIAMSO SBY (Demo)",
           address: "C4:G4",
@@ -236,13 +460,10 @@ Alur Kerja:
           values: [["ayam grill", 1, "porsi", 1, 5674]],
           displayValues: [["ayam grill", "1", "porsi", "1", "5.674"]]
         });
-      }, 500);
+      }, 400);
     }
   };
 
-  /**
-   * Mengolah data sel yang diblok
-   */
   function processReadBlockedSelection(sel) {
     lastSelection = sel;
 
@@ -250,10 +471,8 @@ Alur Kerja:
     var firstRowVals = sel.values[0] || [];
     var firstRowDisp = sel.displayValues ? sel.displayValues[0] : firstRowVals;
 
-    // Tentukan kata kunci acuan & nilai baru awal
-    // Default: Ambil teks pertama yang bukan angka murni sebagai kata kunci
     var detectedKey = "";
-    var detectedKeyCol = startCol - 1; // 0-based
+    var detectedKeyCol = startCol - 1;
     var detectedNewVal = "";
     var detectedTargetCol = null;
 
@@ -290,7 +509,6 @@ Alur Kerja:
     currentMatchColIndex = detectedKeyCol;
     currentTargetColIndex = detectedTargetCol;
 
-    // Update UI Tampilan Data Acuan
     var box = document.getElementById("blockedCellDetailsBox");
     if (box) box.classList.remove("hidden");
 
@@ -302,7 +520,6 @@ Alur Kerja:
       inputVal.value = detectedNewVal;
     }
 
-    // Jika user memblok beberapa sel sekaligus, tampilkan pill pilihan cepat
     var multiBox = document.getElementById("blockedMultiCellsContainer");
     if (multiBox) {
       if (multiPills.length > 1) {
@@ -320,7 +537,6 @@ Alur Kerja:
       }
     }
 
-    // Jalankan pencarian seluruh data yang sama di sheet
     scanMatchesFromBackend();
   }
 
@@ -341,9 +557,6 @@ Alur Kerja:
     scanMatchesFromBackend();
   };
 
-  /**
-   * Scan seluruh baris di sheet yang memiliki data sama dengan kata kunci
-   */
   function scanMatchesFromBackend() {
     if (!currentKeyword) return;
 
@@ -377,7 +590,6 @@ Alur Kerja:
         .findMatchingRowsFromSelectedCell(params);
     } else {
       setTimeout(function() {
-        // Demo
         processScanMatchesResult({
           success: true,
           sheetName: "HPP CIAMSO SBY (Demo)",
@@ -398,7 +610,7 @@ Alur Kerja:
             { sheetName: "HPP CIAMSO", sheetRow: 28, sheetCol: 7, cellAddress: "G28", rowContext: "MIE AYAM CHARSIU", targetColName: "Kolom G (HARGA / KEMASAN)", oldValue: 5385, displayValue: "5.385", newValue: newVal || 5674, isChecked: true }
           ]
         });
-      }, 400);
+      }, 300);
     }
   }
 
@@ -412,7 +624,6 @@ Alur Kerja:
       lblCount.textContent = "Ditemukan " + currentMatches.length + " Baris yang Sama";
     }
 
-    // Populate dropdown target kolom jika belum
     var selectCol = document.getElementById("selectTargetColToReplace");
     if (selectCol && availableColumns.length > 0) {
       var currentVal = selectCol.value;
@@ -420,7 +631,6 @@ Alur Kerja:
         return '<option value="' + c.colIndex + '">' + escapeHtml(c.label) + '</option>';
       }).join('');
 
-      // Auto-pilih kolom: cari yang ada kata "harga" atau "kemasan" atau targetColIndex
       if (currentTargetColIndex !== null) {
         selectCol.value = String(currentTargetColIndex);
       } else {
@@ -440,80 +650,49 @@ Alur Kerja:
     showAuditStatus("info", "Ditemukan " + currentMatches.length + " baris data '" + currentKeyword + "' di sheet. Pilih kolom target lalu klik Replace All.");
   }
 
-  /**
-   * User mengubah target kolom yang ingin diganti
-   */
   window.handleSelectTargetColChange = function(colIdxStr) {
     if (colIdxStr === "") return;
     currentTargetColIndex = parseInt(colIdxStr, 10);
-    // Scan ulang agar alamat sel target dan nilai lama menyesuaikan ke kolom terpilih
     scanMatchesFromBackend();
   };
 
-  /**
-   * User mengubah nilai baru di input utama -> sinkronkan ke semua baris
-   */
   window.handleBlockedNewValueChange = function(val) {
     currentMatches.forEach(function(m) {
       m.newValue = val;
     });
-    // Update input di tabel preview
-    currentMatches.forEach(function(m, idx) {
-      var inputEl = document.getElementById("inputRowNewVal_" + idx);
-      if (inputEl) inputEl.value = val;
-    });
-    updateBlockedExecuteButton();
+    renderBlockedMatchesList();
   };
 
-  /**
-   * Render tabel pratinjau seluruh data yang sama di sheet
-   */
   function renderBlockedMatchesList() {
     var container = document.getElementById("blockedMatchesListContainer");
     var lblHeader = document.getElementById("lblBlockedPreviewHeader");
     var lblSub = document.getElementById("lblBlockedPreviewSub");
 
     var checkedCount = currentMatches.filter(function(m) { return m.isChecked !== false; }).length;
-
-    if (lblHeader) {
-      lblHeader.textContent = checkedCount + " dari " + currentMatches.length + " Baris Terpilih";
-    }
-    if (lblSub) {
-      var selColObj = availableColumns.find(function(c) { return c.colIndex === currentTargetColIndex; });
-      var colName = selColObj ? selColObj.label : "Kolom Target";
-      lblSub.textContent = "Akan mengganti nilai pada: " + colName;
-    }
+    if (lblHeader) lblHeader.textContent = checkedCount + " dari " + currentMatches.length + " Baris Terpilih";
+    if (lblSub) lblSub.textContent = "Kata kunci: \"" + currentKeyword + "\"";
 
     if (!container) return;
 
     if (currentMatches.length === 0) {
-      container.innerHTML = '<div class="p-3 text-center text-slate-400 text-xs">Tidak ditemukan data yang sama di sheet aktif.</div>';
+      container.innerHTML = '<div class="p-3 text-center text-slate-400 italic">Tidak ada baris yang cocok dengan kata kunci "' + escapeHtml(currentKeyword) + '" di sheet.</div>';
       updateBlockedExecuteButton();
       return;
     }
 
-    var html = currentMatches.map(function(item, idx) {
-      var isChecked = item.isChecked !== false ? 'checked' : '';
-      var oldDisp = item.displayValue || String(item.oldValue !== null ? item.oldValue : "-");
-
-      return '<div class="p-2 bg-white hover:bg-slate-50 flex items-center justify-between gap-2 text-xs border-b border-slate-100 transition-colors" id="matchRow_' + idx + '">' +
-        '<div class="flex items-center gap-2 flex-1 min-w-0">' +
-          '<input type="checkbox" ' + isChecked + ' onchange="handleToggleBlockedMatchRow(' + idx + ', this.checked)" class="rounded text-emerald-600 focus:ring-emerald-500 shrink-0 w-3.5 h-3.5 cursor-pointer">' +
-          '<div class="flex-1 min-w-0">' +
-            '<div class="flex items-center gap-1.5 flex-wrap">' +
-              '<span class="font-mono font-bold text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded text-[10px] border border-emerald-200">' + item.cellAddress + '</span>' +
-              '<span class="font-bold text-slate-800 text-[11px] truncate">' + escapeHtml(item.rowContext) + '</span>' +
-            '</div>' +
-            '<div class="text-[10px] text-slate-400 mt-0.5">' +
-              'Nilai Saat Ini: <span class="font-mono font-semibold text-slate-600">' + escapeHtml(oldDisp) + '</span>' +
-            '</div>' +
+    var html = currentMatches.map(function(m, idx) {
+      var isChk = m.isChecked !== false;
+      return '<div class="p-2.5 flex items-center justify-between gap-2 hover:bg-slate-50 transition ' + (isChk ? '' : 'opacity-50 bg-slate-50/50') + '">' +
+        '<div class="flex items-center gap-2 min-w-0 flex-1">' +
+          '<input type="checkbox" ' + (isChk ? 'checked' : '') + ' onchange="handleToggleBlockedMatchRow(' + idx + ', this.checked)" class="rounded text-emerald-600 focus:ring-emerald-500 w-3.5 h-3.5 shrink-0" />' +
+          '<div class="min-w-0">' +
+            '<div class="font-bold text-slate-800 truncate">' + escapeHtml(m.rowContext) + ' <span class="font-mono text-[10px] text-emerald-800 bg-emerald-100 px-1.5 py-0.2 rounded border border-emerald-200">Sel ' + m.cellAddress + '</span></div>' +
+            '<div class="text-[10px] text-slate-500">' + escapeHtml(m.targetColName) + ' • Nilai Lama: <span class="font-mono font-semibold text-slate-700">' + escapeHtml(String(m.displayValue || m.oldValue)) + '</span></div>' +
           '</div>' +
         '</div>' +
-        '<div class="shrink-0 text-right">' +
-          '<input type="text" id="inputRowNewVal_' + idx + '" value="' + escapeHtml(String(item.newValue !== undefined ? item.newValue : "")) + '" ' +
-            'oninput="handleMatchRowValueChange(' + idx + ', this.value)" ' +
-            'placeholder="Nilai baru..." ' +
-            'class="w-28 px-1.5 py-1 text-xs font-bold text-emerald-800 bg-emerald-50/50 border border-emerald-300 rounded focus:ring-1 focus:ring-emerald-500 text-right">' +
+        '<div class="shrink-0 flex items-center gap-1.5">' +
+          '<span class="text-[10px] text-slate-400">Baru:</span>' +
+          '<input type="text" value="' + escapeHtml(String(m.newValue !== undefined ? m.newValue : '')) + '" oninput="handleMatchRowValueChange(' + idx + ', this.value)" class="w-24 px-1.5 py-0.5 text-xs font-mono font-bold text-emerald-900 border border-emerald-300 rounded focus:ring-1 focus:ring-emerald-500 bg-white" placeholder="Nilai baru" />' +
         '</div>' +
       '</div>';
     }).join('');
@@ -554,9 +733,6 @@ Alur Kerja:
     btn.innerHTML = '<span>⚡ 2. REPLACE ALL DATA YANG SAMA DI SHEET (' + checkedCount + ' Baris - Warna Hijau)</span>';
   }
 
-  /**
-   * Eksekusi Replace All ke sheet aktif
-   */
   window.handleExecuteBlockedReplaceAll = function() {
     var itemsToUpdate = currentMatches.filter(function(m) { return m.isChecked !== false; });
     if (itemsToUpdate.length === 0) {
@@ -582,8 +758,7 @@ Alur Kerja:
         .withSuccessHandler(function(res) {
           btn.disabled = false;
           updateBlockedExecuteButton();
-          showAuditStatus("success", "BERHASIL! " + res.totalUpdated + " sel pada data '" + currentKeyword + "' telah di-replace dan diberi warna HIJAU MUDA di sheet aktif!");
-          // Perbarui nilai lama di tampilan
+          showAuditStatus("success", "✓ BERHASIL! " + res.totalUpdated + " sel pada data '" + currentKeyword + "' telah di-replace dan diberi warna HIJAU MUDA di sheet aktif!");
           itemsToUpdate.forEach(function(it) {
             it.oldValue = it.newValue;
             it.displayValue = String(it.newValue);
@@ -600,15 +775,479 @@ Alur Kerja:
       setTimeout(function() {
         btn.disabled = false;
         updateBlockedExecuteButton();
-        showAuditStatus("success", "(Demo) Berhasil me-replace " + itemsToUpdate.length + " sel di sheet aktif dengan warna hijau muda!");
+        showAuditStatus("success", "✓ (Demo) Berhasil me-replace " + itemsToUpdate.length + " sel di sheet aktif dengan warna hijau muda!");
         itemsToUpdate.forEach(function(it) {
           it.oldValue = it.newValue;
           it.displayValue = String(it.newValue);
         });
         renderBlockedMatchesList();
-      }, 700);
+      }, 500);
     }
   };
+
+  // =========================================================================
+  // STATE TAB 2: SCAN ALL BAHAN DI SHEET (FITUR BARU)
+  // =========================================================================
+  var scanAllRawData = null;
+  var scanAllTargetColIndex = null;
+  var scanAllFilterKeyword = "";
+  var scanAllBahanList = [];
+  var scanAllNewValuesMap = {};
+  var scanAllCheckedMap = {};
+
+  window.handleScanAllBahanMenu03 = function() {
+    var btn = document.getElementById("btnScanAllBahanMenu03");
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = '<span class="animate-spin inline-block">⏳</span> Memindai Seluruh Sheet...';
+    }
+
+    if (hasGoogleScriptRun()) {
+      google.script.run
+        .withSuccessHandler(function(res) {
+          if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<span>⚡ 1. Scan All Bahan di Sheet Saat Ini</span>';
+          }
+          processScanAllBahanResult(res);
+        })
+        .withFailureHandler(function(err) {
+          if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<span>⚡ 1. Scan All Bahan di Sheet Saat Ini</span>';
+          }
+          showAuditStatus("error", "Gagal scan seluruh bahan: " + err.message);
+        })
+        .scanAllBahanInActiveSheet();
+    } else {
+      setTimeout(function() {
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = '<span>⚡ 1. Scan All Bahan di Sheet Saat Ini</span>';
+        }
+        // Mock demo data
+        processScanAllBahanResult(getDemoScanAllBahanResult());
+      }, 400);
+    }
+  };
+
+  function processScanAllBahanResult(res) {
+    if (!res || !res.items || res.items.length === 0) {
+      showAuditStatus("error", "Tidak ada bahan resep yang ditemukan di sheet aktif.");
+      return;
+    }
+
+    scanAllRawData = res;
+    scanAllBahanList = res.items || [];
+    scanAllTargetColIndex = (res.defaultTargetColIndex !== undefined) ? res.defaultTargetColIndex : 6;
+    scanAllNewValuesMap = {};
+    scanAllCheckedMap = {};
+
+    // Inisialisasi checked default = false
+    scanAllBahanList.forEach(function(b) {
+      scanAllCheckedMap[b.normKey] = false;
+    });
+
+    var box = document.getElementById("scanAllResultsContainer");
+    if (box) box.classList.remove("hidden");
+
+    var lblStats = document.getElementById("lblScanAllStatsBadge");
+    if (lblStats) {
+      lblStats.textContent = res.uniqueBahanCount + " Bahan Unik (" + res.totalBahanRows + " Baris)";
+    }
+    var lblSheet = document.getElementById("lblScanAllSheetSub");
+    if (lblSheet) {
+      lblSheet.textContent = "Sheet: " + res.sheetName + " • " + res.totalRecipes + " Resep Terdeteksi";
+    }
+
+    // Populate dropdown target kolom
+    var selectCol = document.getElementById("selectScanAllTargetCol");
+    if (selectCol && res.columns) {
+      selectCol.innerHTML = res.columns.map(function(c) {
+        return '<option value="' + c.colIndex + '">' + escapeHtml(c.label) + '</option>';
+      }).join('');
+      selectCol.value = String(scanAllTargetColIndex);
+    }
+
+    renderScanAllBahanList();
+    showAuditStatus("success", "✓ Berhasil memindai " + res.uniqueBahanCount + " bahan unik dari sheet " + res.sheetName + "!");
+  }
+
+  window.handleScanAllTargetColChange = function(valStr) {
+    if (valStr === "") return;
+    scanAllTargetColIndex = parseInt(valStr, 10);
+    renderScanAllBahanList();
+  };
+
+  window.handleSearchBahanFilterInput = function(val) {
+    scanAllFilterKeyword = (val || "").trim().toLowerCase();
+    var btnClear = document.getElementById("btnClearSearchBahan");
+    if (btnClear) {
+      if (scanAllFilterKeyword) btnClear.classList.remove("hidden");
+      else btnClear.classList.add("hidden");
+    }
+    renderScanAllBahanList();
+  };
+
+  window.clearSearchBahanFilter = function() {
+    var input = document.getElementById("inputSearchBahanFilter");
+    if (input) input.value = "";
+    scanAllFilterKeyword = "";
+    var btnClear = document.getElementById("btnClearSearchBahan");
+    if (btnClear) btnClear.classList.add("hidden");
+    renderScanAllBahanList();
+  };
+
+  function renderScanAllBahanList() {
+    var container = document.getElementById("scanAllBahanListContainer");
+    if (!container) return;
+
+    var filtered = scanAllBahanList.filter(function(b) {
+      if (!scanAllFilterKeyword) return true;
+      return b.normKey.indexOf(scanAllFilterKeyword) !== -1 || b.name.toLowerCase().indexOf(scanAllFilterKeyword) !== -1;
+    });
+
+    var checkedCount = 0;
+    scanAllBahanList.forEach(function(b) {
+      if (scanAllCheckedMap[b.normKey]) checkedCount++;
+    });
+    var lblSelected = document.getElementById("lblScanAllSelectedCount");
+    if (lblSelected) {
+      lblSelected.textContent = checkedCount + " Bahan Dicentang (dari " + scanAllBahanList.length + ")";
+    }
+
+    if (filtered.length === 0) {
+      container.innerHTML = '<div class="p-3 text-center text-slate-400 italic">Tidak ada bahan yang cocok dengan pencarian "' + escapeHtml(scanAllFilterKeyword) + '".</div>';
+      updateMassalExecuteButton();
+      return;
+    }
+
+    var targetColIdx = scanAllTargetColIndex !== null ? scanAllTargetColIndex : 6;
+    var targetColObj = scanAllRawData && scanAllRawData.columns ? scanAllRawData.columns[targetColIdx] : null;
+    var targetColLabel = targetColObj ? targetColObj.label : ("Kolom " + (targetColIdx + 1));
+
+    var html = filtered.map(function(b) {
+      var isChecked = Boolean(scanAllCheckedMap[b.normKey]);
+      var curValDisp = "-";
+      var addresses = [];
+
+      if (b.occurrences && b.occurrences.length > 0) {
+        var firstOcc = b.occurrences[0];
+        if (firstOcc.colValuesMap && firstOcc.colValuesMap[targetColIdx]) {
+          curValDisp = firstOcc.colValuesMap[targetColIdx].dispValue || String(firstOcc.colValuesMap[targetColIdx].rawValue || "-");
+        }
+        addresses = b.occurrences.map(function(occ) {
+          if (occ.colValuesMap && occ.colValuesMap[targetColIdx]) {
+            return occ.colValuesMap[targetColIdx].cellAddress;
+          }
+          return "R" + occ.sheetRow;
+        });
+      }
+
+      var currentInputVal = scanAllNewValuesMap[b.normKey] !== undefined ? scanAllNewValuesMap[b.normKey] : "";
+
+      return '<div class="p-2.5 space-y-2 hover:bg-slate-50 transition border-b border-slate-100 last:border-b-0 ' + (isChecked ? 'bg-emerald-50/40' : '') + '">' +
+        '<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">' +
+          '<div class="flex items-start sm:items-center gap-2 min-w-0 flex-1">' +
+            '<input type="checkbox" ' + (isChecked ? 'checked' : '') + ' onchange="handleBahanItemChecked(\'' + escapeHtml(b.normKey) + '\', this.checked)" class="rounded text-emerald-600 focus:ring-emerald-500 w-3.5 h-3.5 mt-0.5 sm:mt-0 shrink-0 cursor-pointer" />' +
+            '<div class="min-w-0 flex-1 flex flex-wrap sm:flex-nowrap items-center gap-2">' +
+              '<span class="font-bold text-slate-900 text-xs sm:text-[13px] whitespace-nowrap">' + escapeHtml(b.name) + '</span>' +
+              '<span class="font-bold text-[9px] bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded border border-slate-200 shrink-0">' + b.recipesCount + ' Resep (' + b.totalCount + ' baris)</span>' +
+              '<div class="text-[10px] text-slate-500 truncate">' +
+                '<span>Saat Ini di ' + escapeHtml(targetColLabel) + ': </span>' +
+                '<strong class="font-mono text-slate-800">' + escapeHtml(curValDisp) + '</strong>' +
+                '<span class="text-slate-300 mx-1">•</span>' +
+                '<span class="font-mono text-[9px] text-emerald-800">' + escapeHtml(addresses.slice(0, 4).join(", ")) + (addresses.length > 4 ? "..." : "") + '</span>' +
+              '</div>' +
+            '</div>' +
+          '</div>' +
+
+          '<!-- BAGIAN KANAN: INPUT NILAI BARU & TOMBOL REPLACE -->' +
+          '<div class="flex items-center gap-2 shrink-0 self-end sm:self-auto">' +
+            '<button type="button" onclick="handleToggleBahanDetails(\'' + escapeHtml(b.normKey) + '\')" class="text-[10px] text-emerald-700 hover:underline font-semibold cursor-pointer whitespace-nowrap mr-1">' +
+              'Detail Resep ▾' +
+            '</button>' +
+            '<div class="flex items-center gap-1">' +
+              '<span class="text-[10px] font-bold text-slate-600 shrink-0 hidden sm:inline">Ganti:</span>' +
+              '<input type="text" value="' + escapeHtml(currentInputVal) + '" oninput="handleBahanNewValueInput(\'' + escapeHtml(b.normKey) + '\', this.value)" placeholder="Nilai baru..." class="w-24 sm:w-28 px-2 py-1 text-xs font-mono font-bold text-emerald-950 bg-white border border-emerald-300 rounded focus:ring-1 focus:ring-emerald-500 shadow-2xs" />' +
+            '</div>' +
+            '<button id="btnReplaceBahan_' + escapeHtml(b.normKey) + '" type="button" onclick="handleReplaceSingleBahan(\'' + escapeHtml(b.normKey) + '\')" class="px-2.5 sm:px-3 py-1 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-[11px] font-bold rounded shadow-xs shrink-0 flex items-center gap-1 cursor-pointer transition" title="Replace all baris bahan ini di sheet">' +
+              '<span>⚡ Replace</span>' +
+            '</button>' +
+          '</div>' +
+        '</div>' +
+
+        '<!-- ACCORDION DETAIL RESEP (HIDDEN BY DEFAULT) -->' +
+        '<div id="detailBox_' + escapeHtml(b.normKey) + '" class="hidden bg-slate-50 p-2 rounded text-[10px] space-y-1 border border-slate-200">' +
+          '<div class="font-bold text-slate-600">Muncul pada Resep:</div>' +
+          '<ul class="list-disc ml-4 space-y-0.5 text-slate-700 font-mono text-[9px]">' +
+            b.occurrences.map(function(occ) {
+              var addr = occ.colValuesMap && occ.colValuesMap[targetColIdx] ? occ.colValuesMap[targetColIdx].cellAddress : ("Baris " + occ.sheetRow);
+              var v = occ.colValuesMap && occ.colValuesMap[targetColIdx] ? occ.colValuesMap[targetColIdx].dispValue : "-";
+              return '<li><b>' + escapeHtml(occ.recipe) + '</b> → Sel ' + addr + ' (Nilai: ' + escapeHtml(v) + ')</li>';
+            }).join('') +
+          '</ul>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+
+    container.innerHTML = html;
+    updateMassalExecuteButton();
+  }
+
+  window.handleToggleBahanDetails = function(normKey) {
+    var box = document.getElementById("detailBox_" + normKey);
+    if (box) box.classList.toggle("hidden");
+  };
+
+  window.handleBahanItemChecked = function(normKey, checked) {
+    scanAllCheckedMap[normKey] = Boolean(checked);
+    var checkedCount = 0;
+    scanAllBahanList.forEach(function(b) {
+      if (scanAllCheckedMap[b.normKey]) checkedCount++;
+    });
+    var lblSelected = document.getElementById("lblScanAllSelectedCount");
+    if (lblSelected) {
+      lblSelected.textContent = checkedCount + " Bahan Dicentang (dari " + scanAllBahanList.length + ")";
+    }
+    updateMassalExecuteButton();
+  };
+
+  window.handleToggleAllBahanItems = function(checked) {
+    scanAllBahanList.forEach(function(b) {
+      scanAllCheckedMap[b.normKey] = Boolean(checked);
+    });
+    renderScanAllBahanList();
+  };
+
+  window.handleBahanNewValueInput = function(normKey, val) {
+    scanAllNewValuesMap[normKey] = val;
+    // JANGAN auto-centang checkbox saat mengetik nilai baru!
+    updateMassalExecuteButton();
+  };
+
+  function updateMassalExecuteButton() {
+    var btn = document.getElementById("btnExecuteMassalScanAll");
+    if (!btn) return;
+    var checkedItems = scanAllBahanList.filter(function(b) {
+      return scanAllCheckedMap[b.normKey] && (scanAllNewValuesMap[b.normKey] !== undefined && scanAllNewValuesMap[b.normKey].trim() !== "");
+    });
+    btn.innerHTML = '<span>⚡ 2. REPLACE ALL BAHAN YANG DICENTANG (' + checkedItems.length + ' Bahan - Warna Hijau)</span>';
+  }
+
+  /**
+   * Replace All khusus untuk 1 Bahan tertentu di seluruh sheet
+   */
+  window.handleReplaceSingleBahan = function(normKey) {
+    var bahanObj = scanAllBahanList.find(function(b) { return b.normKey === normKey; });
+    if (!bahanObj) return;
+
+    var newVal = scanAllNewValuesMap[normKey];
+    if (newVal === undefined || String(newVal).trim() === "") {
+      showAuditStatus("warning", "Ketik nilai baru untuk bahan '" + bahanObj.name + "' terlebih dahulu.");
+      return;
+    }
+
+    var btn = document.getElementById("btnReplaceBahan_" + normKey);
+    var originalBtnHtml = btn ? btn.innerHTML : '<span>⚡ Replace</span>';
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = '<span class="animate-spin inline-block text-[10px]">⏳</span> Mengganti...';
+      btn.classList.add("opacity-75");
+    }
+
+    var targetColIdx = scanAllTargetColIndex !== null ? scanAllTargetColIndex : 6;
+    var chkGreen = document.getElementById("chkScanAllApplyGreen");
+    var applyHighlight = chkGreen ? chkGreen.checked : true;
+
+    var updates = bahanObj.occurrences.map(function(occ) {
+      var sheetCol = targetColIdx + 1;
+      var curVal = occ.colValuesMap && occ.colValuesMap[targetColIdx] ? occ.colValuesMap[targetColIdx].rawValue : null;
+      var curDisp = occ.colValuesMap && occ.colValuesMap[targetColIdx] ? occ.colValuesMap[targetColIdx].dispValue : "";
+      return {
+        sheetName: scanAllRawData.sheetName,
+        sheetRow: occ.sheetRow,
+        sheetCol: sheetCol,
+        cellAddress: colNumberToLetter(sheetCol) + occ.sheetRow,
+        oldValue: curVal,
+        displayValue: curDisp,
+        newValue: newVal
+      };
+    });
+
+    var payload = {
+      applyHighlight: applyHighlight,
+      highlightColor: applyHighlight ? "#dcfce7" : "",
+      selectedMatches: updates
+    };
+
+    if (hasGoogleScriptRun()) {
+      google.script.run
+        .withSuccessHandler(function(res) {
+          if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<span>✓ Berhasil!</span>';
+            btn.className = btn.className.replace("bg-emerald-600", "bg-teal-700");
+          }
+          showAuditStatus("success", "✓ Sukses! " + res.totalUpdated + " sel pada bahan '" + bahanObj.name + "' berhasil di-replace di sheet aktif!");
+          
+          // Update nilai tersimpan di memory
+          bahanObj.occurrences.forEach(function(occ) {
+            if (occ.colValuesMap && occ.colValuesMap[targetColIdx]) {
+              occ.colValuesMap[targetColIdx].rawValue = newVal;
+              occ.colValuesMap[targetColIdx].dispValue = String(newVal);
+            }
+          });
+
+          // Checkbox TETAP TIDAK DICENTANG (sesuai instruksi user)
+          setTimeout(function() {
+            renderScanAllBahanList();
+          }, 800);
+        })
+        .withFailureHandler(function(err) {
+          if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = originalBtnHtml;
+            btn.classList.remove("opacity-75");
+          }
+          showAuditStatus("error", "Gagal replace: " + err.message);
+        })
+        .replaceDataInSheet(payload);
+    } else {
+      setTimeout(function() {
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = '<span>✓ Berhasil!</span>';
+          btn.className = btn.className.replace("bg-emerald-600", "bg-teal-700");
+        }
+        showAuditStatus("success", "✓ (Demo) Berhasil me-replace " + updates.length + " sel pada bahan '" + bahanObj.name + "'!");
+        bahanObj.occurrences.forEach(function(occ) {
+          if (occ.colValuesMap && occ.colValuesMap[targetColIdx]) {
+            occ.colValuesMap[targetColIdx].rawValue = newVal;
+            occ.colValuesMap[targetColIdx].dispValue = String(newVal);
+          }
+        });
+        setTimeout(function() {
+          renderScanAllBahanList();
+        }, 800);
+      }, 500);
+    }
+  };
+
+  /**
+   * Replace All Massal untuk seluruh bahan yang dicentang dan memiliki nilai baru
+   */
+  window.handleExecuteMassalScanAll = function() {
+    var targetColIdx = scanAllTargetColIndex !== null ? scanAllTargetColIndex : 6;
+    var chkGreen = document.getElementById("chkScanAllApplyGreen");
+    var applyHighlight = chkGreen ? chkGreen.checked : true;
+
+    var allUpdates = [];
+    var replacedBahanCount = 0;
+
+    scanAllBahanList.forEach(function(b) {
+      if (scanAllCheckedMap[b.normKey]) {
+        var newVal = scanAllNewValuesMap[b.normKey];
+        if (newVal !== undefined && String(newVal).trim() !== "") {
+          replacedBahanCount++;
+          b.occurrences.forEach(function(occ) {
+            var sheetCol = targetColIdx + 1;
+            var curVal = occ.colValuesMap && occ.colValuesMap[targetColIdx] ? occ.colValuesMap[targetColIdx].rawValue : null;
+            var curDisp = occ.colValuesMap && occ.colValuesMap[targetColIdx] ? occ.colValuesMap[targetColIdx].dispValue : "";
+            allUpdates.push({
+              sheetName: scanAllRawData.sheetName,
+              sheetRow: occ.sheetRow,
+              sheetCol: sheetCol,
+              cellAddress: colNumberToLetter(sheetCol) + occ.sheetRow,
+              oldValue: curVal,
+              displayValue: curDisp,
+              newValue: newVal,
+              bahanNormKey: b.normKey
+            });
+          });
+        }
+      }
+    });
+
+    if (allUpdates.length === 0) {
+      showAuditStatus("warning", "Centang minimal 1 bahan dan ketik nilai barunya untuk me-replace massal.");
+      return;
+    }
+
+    var btn = document.getElementById("btnExecuteMassalScanAll");
+    btn.disabled = true;
+    btn.innerHTML = '<span class="animate-spin inline-block">⏳</span> Mengganti ' + allUpdates.length + ' Sel (' + replacedBahanCount + ' Bahan)...';
+
+    var payload = {
+      applyHighlight: applyHighlight,
+      highlightColor: applyHighlight ? "#dcfce7" : "",
+      selectedMatches: allUpdates
+    };
+
+    if (hasGoogleScriptRun()) {
+      google.script.run
+        .withSuccessHandler(function(res) {
+          btn.disabled = false;
+          updateMassalExecuteButton();
+          showAuditStatus("success", "✓ BERHASIL MASSAL! " + res.totalUpdated + " sel dari " + replacedBahanCount + " bahan telah di-replace dengan warna HIJAU!");
+          // Update in memory
+          allUpdates.forEach(function(u) {
+            var bObj = scanAllBahanList.find(function(b) { return b.normKey === u.bahanNormKey; });
+            if (bObj) {
+              bObj.occurrences.forEach(function(occ) {
+                if (occ.sheetRow === u.sheetRow && occ.colValuesMap && occ.colValuesMap[targetColIdx]) {
+                  occ.colValuesMap[targetColIdx].rawValue = u.newValue;
+                  occ.colValuesMap[targetColIdx].dispValue = String(u.newValue);
+                }
+              });
+            }
+          });
+          renderScanAllBahanList();
+        })
+        .withFailureHandler(function(err) {
+          btn.disabled = false;
+          updateMassalExecuteButton();
+          showAuditStatus("error", "Gagal replace massal: " + err.message);
+        })
+        .replaceDataInSheet(payload);
+    } else {
+      setTimeout(function() {
+        btn.disabled = false;
+        updateMassalExecuteButton();
+        showAuditStatus("success", "✓ (Demo) Berhasil me-replace " + allUpdates.length + " sel dari " + replacedBahanCount + " bahan!");
+        allUpdates.forEach(function(u) {
+          var bObj = scanAllBahanList.find(function(b) { return b.normKey === u.bahanNormKey; });
+          if (bObj) {
+            bObj.occurrences.forEach(function(occ) {
+              if (occ.sheetRow === u.sheetRow && occ.colValuesMap && occ.colValuesMap[targetColIdx]) {
+                occ.colValuesMap[targetColIdx].rawValue = u.newValue;
+                occ.colValuesMap[targetColIdx].dispValue = String(u.newValue);
+              }
+            });
+          }
+        });
+        renderScanAllBahanList();
+      }, 500);
+    }
+  };
+
+  window.handleOpenModelessFromMenu03 = function() {
+    if (hasGoogleScriptRun()) {
+      google.script.run.showModelessReplaceHpp();
+    } else {
+      showAuditStatus("info", "Simulasi membuka Modeless Dialog Luas (1100px) di Google Sheets.");
+    }
+  };
+
+  function colNumberToLetter(col) {
+    var letter = "";
+    while (col > 0) {
+      var rem = (col - 1) % 26;
+      letter = String.fromCharCode(65 + rem) + letter;
+      col = Math.floor((col - 1) / 26);
+    }
+    return letter;
+  }
 
   function escapeHtml(str) {
     return String(str || "")
@@ -616,6 +1255,43 @@ Alur Kerja:
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;")
       .replace(/"/g, "&quot;");
+  }
+
+  function getDemoScanAllBahanResult() {
+    return {
+      success: true,
+      sheetName: "HPP CENTRAL OKTOBER 26 (Demo)",
+      uniqueBahanCount: 14,
+      totalBahanRows: 38,
+      totalRecipes: 12,
+      columns: [
+        { colIndex: 0, colNumber: 1, colLetter: "A", headerName: "No.", label: "Kolom A (No.)" },
+        { colIndex: 1, colNumber: 2, colLetter: "B", headerName: "Preparetion", label: "Kolom B (Preparetion)" },
+        { colIndex: 2, colNumber: 3, colLetter: "C", headerName: "Bahan", label: "Kolom C (Bahan)" },
+        { colIndex: 3, colNumber: 4, colLetter: "D", headerName: "Gramasi", label: "Kolom D (Gramasi)" },
+        { colIndex: 4, colNumber: 5, colLetter: "E", headerName: "SATUAN", label: "Kolom E (SATUAN)" },
+        { colIndex: 5, colNumber: 6, colLetter: "F", headerName: "KEMASAN", label: "Kolom F (KEMASAN)" },
+        { colIndex: 6, colNumber: 7, colLetter: "G", headerName: "HARGA / KEMASAN", label: "Kolom G (HARGA / KEMASAN)" }
+      ],
+      defaultBahanColIndex: 2,
+      defaultTargetColIndex: 6,
+      items: [
+        { name: "angkak", normKey: "angkak", totalCount: 2, recipesCount: 2, occurrences: [{ sheetRow: 5, recipe: "AYAM CHARSIU REGULER", colValuesMap: { 6: { rawValue: 68000, dispValue: "68.000", cellAddress: "G5" } } }, { sheetRow: 21, recipe: "AYAM CHARSIU PROMO", colValuesMap: { 6: { rawValue: 68000, dispValue: "68.000", cellAddress: "G21" } } }] },
+        { name: "bawang putih kupas", normKey: "bawang putih kupas", totalCount: 4, recipesCount: 4, occurrences: [{ sheetRow: 11, recipe: "AYAM CHARSIU REGULER", colValuesMap: { 6: { rawValue: 36000, dispValue: "36.000", cellAddress: "G11" } } }, { sheetRow: 27, recipe: "AYAM CHARSIU PROMO", colValuesMap: { 6: { rawValue: 36000, dispValue: "36.000", cellAddress: "G27" } } }] },
+        { name: "fillet paha", normKey: "fillet paha", totalCount: 3, recipesCount: 3, occurrences: [{ sheetRow: 3, recipe: "AYAM CHARSIU REGULER", colValuesMap: { 6: { rawValue: 48000, dispValue: "48.000", cellAddress: "G3" } } }, { sheetRow: 19, recipe: "AYAM CHARSIU PROMO", colValuesMap: { 6: { rawValue: 48000, dispValue: "48.000", cellAddress: "G19" } } }] },
+        { name: "garam", normKey: "garam", totalCount: 8, recipesCount: 8, occurrences: [{ sheetRow: 14, recipe: "AYAM CHARSIU REGULER", colValuesMap: { 6: { rawValue: 19000, dispValue: "19.000", cellAddress: "G14" } } }, { sheetRow: 30, recipe: "AYAM CHARSIU PROMO", colValuesMap: { 6: { rawValue: 19000, dispValue: "19.000", cellAddress: "G30" } } }] },
+        { name: "gula", normKey: "gula", totalCount: 6, recipesCount: 6, occurrences: [{ sheetRow: 10, recipe: "AYAM CHARSIU REGULER", colValuesMap: { 6: { rawValue: 17500, dispValue: "17.500", cellAddress: "G10" } } }, { sheetRow: 26, recipe: "AYAM CHARSIU PROMO", colValuesMap: { 6: { rawValue: 17500, dispValue: "17.500", cellAddress: "G26" } } }] },
+        { name: "jahe", normKey: "jahe", totalCount: 5, recipesCount: 5, occurrences: [{ sheetRow: 4, recipe: "AYAM CHARSIU REGULER", colValuesMap: { 6: { rawValue: 24000, dispValue: "24.000", cellAddress: "G4" } } }, { sheetRow: 20, recipe: "AYAM CHARSIU PROMO", colValuesMap: { 6: { rawValue: 24000, dispValue: "24.000", cellAddress: "G20" } } }] },
+        { name: "knorr", normKey: "knorr", totalCount: 7, recipesCount: 7, occurrences: [{ sheetRow: 13, recipe: "AYAM CHARSIU REGULER", colValuesMap: { 6: { rawValue: 92803, dispValue: "92.803", cellAddress: "G13" } } }, { sheetRow: 29, recipe: "AYAM CHARSIU PROMO", colValuesMap: { 6: { rawValue: 92803, dispValue: "92.803", cellAddress: "G29" } } }] },
+        { name: "lada", normKey: "lada", totalCount: 6, recipesCount: 6, occurrences: [{ sheetRow: 16, recipe: "AYAM CHARSIU REGULER", colValuesMap: { 6: { rawValue: 103000, dispValue: "103.000", cellAddress: "G16" } } }, { sheetRow: 32, recipe: "AYAM CHARSIU PROMO", colValuesMap: { 6: { rawValue: 103000, dispValue: "103.000", cellAddress: "G32" } } }] },
+        { name: "madu", normKey: "madu", totalCount: 2, recipesCount: 2, occurrences: [{ sheetRow: 6, recipe: "AYAM CHARSIU REGULER", colValuesMap: { 6: { rawValue: 49000, dispValue: "49.000", cellAddress: "G6" } } }, { sheetRow: 22, recipe: "AYAM CHARSIU PROMO", colValuesMap: { 6: { rawValue: 49000, dispValue: "49.000", cellAddress: "G22" } } }] },
+        { name: "minyak goreng", normKey: "minyak goreng", totalCount: 5, recipesCount: 5, occurrences: [{ sheetRow: 15, recipe: "AYAM CHARSIU REGULER", colValuesMap: { 6: { rawValue: 358000, dispValue: "358.000", cellAddress: "G15" } } }, { sheetRow: 31, recipe: "AYAM CHARSIU PROMO", colValuesMap: { 6: { rawValue: 358000, dispValue: "358.000", cellAddress: "G31" } } }] },
+        { name: "minyak wijen", normKey: "minyak wijen", totalCount: 4, recipesCount: 4, occurrences: [{ sheetRow: 7, recipe: "AYAM CHARSIU REGULER", colValuesMap: { 6: { rawValue: 44000, dispValue: "44.000", cellAddress: "G7" } } }, { sheetRow: 23, recipe: "AYAM CHARSIU PROMO", colValuesMap: { 6: { rawValue: 44000, dispValue: "44.000", cellAddress: "G23" } } }] },
+        { name: "powder ngohiong", normKey: "powder ngohiong", totalCount: 2, recipesCount: 2, occurrences: [{ sheetRow: 9, recipe: "AYAM CHARSIU REGULER", colValuesMap: { 6: { rawValue: 117000, dispValue: "117.000", cellAddress: "G9" } } }, { sheetRow: 25, recipe: "AYAM CHARSIU PROMO", colValuesMap: { 6: { rawValue: 117000, dispValue: "117.000", cellAddress: "G25" } } }] },
+        { name: "tiram panda", normKey: "tiram panda", totalCount: 4, recipesCount: 4, occurrences: [{ sheetRow: 8, recipe: "AYAM CHARSIU REGULER", colValuesMap: { 6: { rawValue: 52000, dispValue: "52.000", cellAddress: "G8" } } }, { sheetRow: 24, recipe: "AYAM CHARSIU PROMO", colValuesMap: { 6: { rawValue: 52000, dispValue: "52.000", cellAddress: "G24" } } }] },
+        { name: "vitzin", normKey: "vitzin", totalCount: 6, recipesCount: 6, occurrences: [{ sheetRow: 12, recipe: "AYAM CHARSIU REGULER", colValuesMap: { 6: { rawValue: 49584, dispValue: "49.584", cellAddress: "G12" } } }, { sheetRow: 28, recipe: "AYAM CHARSIU PROMO", colValuesMap: { 6: { rawValue: 49584, dispValue: "49.584", cellAddress: "G28" } } }] }
+      ]
+    };
   }
 
 })();

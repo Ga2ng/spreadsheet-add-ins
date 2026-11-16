@@ -13,16 +13,60 @@
 function onOpen() {
   SpreadsheetApp.getUi()
     .createMenu("Audit Data Tools")
-    .addItem("Buka Sidebar Audit Tools", "showSidebar")
+    .addItem("🗖 Buka Modeless Dialog (UI Luas — Rekomendasi)", "showModelessAuditTools")
+    .addItem("🗗 Buka Mini Floating (Bebas Geser 460px)", "showModelessMiniAuditTools")
+    .addItem("🗕 Buka di Sidebar Kanan", "showSidebar")
+    .addSeparator()
+    .addItem("⚡ Menu 03: Replace All Bahan (Modeless Luas)", "showModelessReplaceHpp")
     .addToUi();
 }
 
-function showSidebar() {
+function showSidebar(mode) {
   var template = HtmlService.createTemplateFromFile("Sidebar");
+  template.initialMode = mode || "ciamso-pembanding";
+  template.isModeless = false;
+  template.isMiniFloating = false;
   var html = template.evaluate()
     .setTitle("Audit Data Tools")
     .setWidth(420);
   SpreadsheetApp.getUi().showSidebar(html);
+}
+
+/**
+ * Membuka UI Audit Data Tools dalam bentuk Modeless Dialog (Jendela Mengambang Luas 1100x750)
+ * Memberikan bidang pandang luas layaknya aplikasi web normal sambil tetap dapat mengklik spreadsheet.
+ */
+function showModelessAuditTools(mode) {
+  var template = HtmlService.createTemplateFromFile("Sidebar");
+  template.initialMode = mode || "replace-range";
+  template.isModeless = true;
+  template.isMiniFloating = false;
+  var html = template.evaluate()
+    .setTitle("Audit Data Tools — Modeless UI Luas")
+    .setWidth(1100)
+    .setHeight(750);
+  SpreadsheetApp.getUi().showModelessDialog(html, "Audit Data Tools — Modeless UI Luas (Bebas Klik & Edit Spreadsheet)");
+}
+
+/**
+ * Membuka UI Audit Data Tools dalam bentuk Mini Modeless Floating (Ukuran 460x680)
+ * Jendela mengambang ramping yang bisa digeser ke mana saja tanpa menutupi seluruh sheet.
+ * Seluruh menu dan fitur keluar dan berjalan normal dengan layout responsif.
+ */
+function showModelessMiniAuditTools(mode) {
+  var template = HtmlService.createTemplateFromFile("Sidebar");
+  template.initialMode = mode || "replace-range";
+  template.isModeless = true;
+  template.isMiniFloating = true;
+  var html = template.evaluate()
+    .setTitle("Audit Tools — Mini Floating")
+    .setWidth(460)
+    .setHeight(680);
+  SpreadsheetApp.getUi().showModelessDialog(html, "Audit Tools (Mini Floating — Bebas Geser)");
+}
+
+function showModelessReplaceHpp() {
+  showModelessAuditTools("replace-range");
 }
 
 /**
@@ -2157,5 +2201,195 @@ function findMatchingRowsFromSelectedCell(params) {
     searchKeyword: searchKey,
     columns: columns,
     matches: matches
+  };
+}
+
+/**
+ * ============================================================================
+ * SCAN SELURUH BAHAN DI SHEET AKTIF (UNTUK MENU 03 ADJUSTMENT FITUR)
+ * ============================================================================
+ * Memindai seluruh baris resep di sheet aktif, mendeteksi semua kolom yang ada,
+ * dan mengelompokkan bahan unik beserta baris kemunculannya.
+ * Pengguna dapat memilih kolom mana yang ingin diganti (misal Harga/Kemasan,
+ * Kemasan, Gramasi, dll.) tanpa harus mencari dan menggeser sheet satu per satu.
+ */
+function scanAllBahanInActiveSheet() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getActiveSheet();
+  var dataRange = sheet.getDataRange();
+  if (!dataRange) {
+    throw new Error("Sheet '" + sheet.getName() + "' tidak memiliki data.");
+  }
+
+  var numRows = dataRange.getNumRows();
+  var numCols = dataRange.getNumColumns();
+  if (numRows < 2 || numCols < 3) {
+    throw new Error("Sheet '" + sheet.getName() + "' tidak memiliki data baris/kolom yang cukup.");
+  }
+
+  var rawVals = dataRange.getValues();
+  var dispVals = dataRange.getDisplayValues();
+
+  // 1. Ekstrak Daftar Kolom dan Nama Header
+  var colBahan = -1;
+  var colPrep = -1;
+  var colKemasan = -1;
+  var colHargaKemasan = -1;
+  var colGramasi = -1;
+  var colSatuan = -1;
+  var headerRowIdx = -1;
+
+  for (var rHead = 0; rHead < Math.min(10, numRows); rHead++) {
+    for (var c = 0; c < numCols; c++) {
+      var val = String(dispVals[rHead][c] || "").trim().toLowerCase();
+      if (/^bahan|^nama\s*bahan/i.test(val)) colBahan = c;
+      if (/kemasan/i.test(val) && !/harga/i.test(val)) colKemasan = c;
+      if (/harga\s*[\/\\]?\s*kemasan|harga\s*beli|harga/i.test(val)) colHargaKemasan = c;
+      if (/^gramasi|^qty|^berat/i.test(val)) colGramasi = c;
+      if (/^satuan|^unit/i.test(val)) colSatuan = c;
+      if (/preparetion|preparation|menu|resep/i.test(val)) colPrep = c;
+    }
+    if (colBahan !== -1) {
+      headerRowIdx = rHead;
+      break;
+    }
+  }
+
+  // Fallback jika header tidak terdeteksi
+  if (colBahan === -1) {
+    if (numCols >= 10) {
+      colPrep = 1;
+      colBahan = 2;
+      colGramasi = 3;
+      colSatuan = 4;
+      colKemasan = 5;
+      colHargaKemasan = 6;
+      headerRowIdx = 0;
+    } else {
+      colBahan = 0;
+      colGramasi = 1;
+      colSatuan = 2;
+      colKemasan = 3;
+      colHargaKemasan = 4;
+      headerRowIdx = 0;
+    }
+  }
+
+  // Bangun daftar kolom lengkap untuk pilihan dropdown
+  var columns = [];
+  for (var cIdx = 0; cIdx < numCols; cIdx++) {
+    var colLetter = colNumberToLetter_(cIdx + 1);
+    var headerName = "";
+    for (var hR = 0; hR < Math.min(5, numRows); hR++) {
+      var hVal = String(dispVals[hR][cIdx] || "").trim();
+      if (hVal && !/^\d+$/.test(hVal) && !/^(total|subtotal)$/i.test(hVal)) {
+        headerName = hVal;
+        break;
+      }
+    }
+    columns.push({
+      colIndex: cIdx,
+      colNumber: cIdx + 1,
+      colLetter: colLetter,
+      headerName: headerName,
+      label: "Kolom " + colLetter + (headerName ? " (" + headerName + ")" : "")
+    });
+  }
+
+  // 2. Scan Seluruh Baris Bahan & Kelompokkan per Bahan Unik
+  var startRow = headerRowIdx >= 0 ? headerRowIdx + 1 : 0;
+  var currentRecipe = "Resep Umum";
+  var recipeSet = {};
+  var groupedMap = {};
+  var totalBahanRows = 0;
+
+  for (var r = startRow; r < numRows; r++) {
+    var rowVals = rawVals[r];
+    if (!rowVals || rowVals.length === 0) continue;
+
+    // Deteksi menu/resep jika ada kolom prep
+    if (colPrep >= 0) {
+      var pVal = String(rowVals[colPrep] || "").trim();
+      if (pVal && !/^(total|subtotal|hpp|selling|grand|presentase|margin)/i.test(pVal) && isNaN(Number(pVal))) {
+        currentRecipe = pVal;
+        recipeSet[currentRecipe] = true;
+      }
+    }
+
+    var rawBahan = rowVals[colBahan];
+    if (rawBahan === null || rawBahan === undefined) continue;
+    var bahanStr = String(rawBahan).trim();
+    if (!bahanStr) continue;
+
+    // Abaikan baris header, total, subtotal, angka murni
+    if (/^(total|subtotal|sub\s*total|grand\s*total|hpp|presentase|selling\s*price|bahan|nama\s*bahan|no\.?)$/i.test(bahanStr)) {
+      continue;
+    }
+    if (!isNaN(Number(bahanStr))) {
+      continue;
+    }
+
+    var normKey = bahanStr.toLowerCase().trim();
+    if (!groupedMap[normKey]) {
+      groupedMap[normKey] = {
+        name: bahanStr,
+        normKey: normKey,
+        occurrences: [],
+        recipes: {}
+      };
+    }
+
+    var sheetRowNumber = r + 1;
+    // Kumpulkan nilai di setiap kolom untuk baris ini
+    var colValuesMap = {};
+    for (var c = 0; c < numCols; c++) {
+      colValuesMap[c] = {
+        rawValue: rawVals[r][c],
+        dispValue: dispVals[r][c],
+        cellAddress: colNumberToLetter_(c + 1) + sheetRowNumber
+      };
+    }
+
+    groupedMap[normKey].occurrences.push({
+      sheetRow: sheetRowNumber,
+      recipe: currentRecipe,
+      colValuesMap: colValuesMap
+    });
+    groupedMap[normKey].recipes[currentRecipe] = true;
+    totalBahanRows++;
+  }
+
+  // Ubah ke array list
+  var uniqueBahanList = [];
+  for (var key in groupedMap) {
+    var grp = groupedMap[key];
+    var recipesArr = Object.keys(grp.recipes);
+    uniqueBahanList.push({
+      name: grp.name,
+      normKey: grp.normKey,
+      totalCount: grp.occurrences.length,
+      recipesCount: recipesArr.length,
+      recipesList: recipesArr,
+      occurrences: grp.occurrences
+    });
+  }
+
+  // Urutkan alfabetis
+  uniqueBahanList.sort(function(a, b) {
+    return a.name.localeCompare(b.name);
+  });
+
+  var defaultTargetCol = colHargaKemasan >= 0 ? colHargaKemasan : (colKemasan >= 0 ? colKemasan : colBahan);
+
+  return {
+    success: true,
+    sheetName: sheet.getName(),
+    columns: columns,
+    defaultBahanColIndex: colBahan >= 0 ? colBahan : 0,
+    defaultTargetColIndex: defaultTargetCol,
+    uniqueBahanCount: uniqueBahanList.length,
+    totalBahanRows: totalBahanRows,
+    totalRecipes: Object.keys(recipeSet).length,
+    items: uniqueBahanList
   };
 }
