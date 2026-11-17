@@ -2233,21 +2233,28 @@ function scanAllBahanInActiveSheet() {
   // 1. Ekstrak Daftar Kolom dan Nama Header
   var colBahan = -1;
   var colPrep = -1;
-  var colKemasan = -1;
-  var colHargaKemasan = -1;
   var colGramasi = -1;
   var colSatuan = -1;
+  var colKemasan = -1;
+  var colHargaKemasan = -1;
+  var colHargaPerGram = -1;
+  var colHarga = -1;
+  var colProcess = -1;
   var headerRowIdx = -1;
 
   for (var rHead = 0; rHead < Math.min(10, numRows); rHead++) {
     for (var c = 0; c < numCols; c++) {
       var val = String(dispVals[rHead][c] || "").trim().toLowerCase();
-      if (/^bahan|^nama\s*bahan/i.test(val)) colBahan = c;
-      if (/kemasan/i.test(val) && !/harga/i.test(val)) colKemasan = c;
-      if (/harga\s*[\/\\]?\s*kemasan|harga\s*beli|harga/i.test(val)) colHargaKemasan = c;
-      if (/^gramasi|^qty|^berat/i.test(val)) colGramasi = c;
-      if (/^satuan|^unit/i.test(val)) colSatuan = c;
-      if (/preparetion|preparation|menu|resep/i.test(val)) colPrep = c;
+      if (!val) continue;
+      if (/preparetion|preparation|menu|resep/i.test(val) && colPrep === -1) colPrep = c;
+      if (/^bahan|^nama\s*bahan/i.test(val) && colBahan === -1) colBahan = c;
+      if (/^gramasi|^qty|^berat/i.test(val) && colGramasi === -1) colGramasi = c;
+      if (/^satuan|^unit/i.test(val) && colSatuan === -1) colSatuan = c;
+      if (/kemasan/i.test(val) && !/harga/i.test(val) && colKemasan === -1) colKemasan = c;
+      if (/harga\s*[\/\\]?\s*kemasan|harga\s*beli/i.test(val) && colHargaKemasan === -1) colHargaKemasan = c;
+      if (/harga\s*[\/\\]?\s*(gram|ml|gr)/i.test(val) && colHargaPerGram === -1) colHargaPerGram = c;
+      if (/^harga$/i.test(val) && colHarga === -1) colHarga = c;
+      if (/process|processing/i.test(val) && colProcess === -1) colProcess = c;
     }
     if (colBahan !== -1) {
       headerRowIdx = rHead;
@@ -2255,8 +2262,17 @@ function scanAllBahanInActiveSheet() {
     }
   }
 
-  // Fallback jika header tidak terdeteksi
-  if (colBahan === -1) {
+  // Fallback sequential jika colBahan terdeteksi
+  if (colBahan !== -1) {
+    if (colGramasi === -1 && colBahan + 1 < numCols) colGramasi = colBahan + 1;
+    if (colSatuan === -1 && colBahan + 2 < numCols) colSatuan = colBahan + 2;
+    if (colKemasan === -1 && colBahan + 3 < numCols) colKemasan = colBahan + 3;
+    if (colHargaKemasan === -1 && colBahan + 4 < numCols) colHargaKemasan = colBahan + 4;
+    if (colHargaPerGram === -1 && colBahan + 5 < numCols) colHargaPerGram = colBahan + 5;
+    if (colHarga === -1 && colBahan + 6 < numCols) colHarga = colBahan + 6;
+    if (colProcess === -1 && colBahan + 7 < numCols) colProcess = colBahan + 7;
+  } else {
+    // Fallback absolut jika header tidak terdeteksi
     if (numCols >= 10) {
       colPrep = 1;
       colBahan = 2;
@@ -2264,6 +2280,9 @@ function scanAllBahanInActiveSheet() {
       colSatuan = 4;
       colKemasan = 5;
       colHargaKemasan = 6;
+      colHargaPerGram = 7;
+      colHarga = 8;
+      colProcess = 9;
       headerRowIdx = 0;
     } else {
       colBahan = 0;
@@ -2271,6 +2290,9 @@ function scanAllBahanInActiveSheet() {
       colSatuan = 2;
       colKemasan = 3;
       colHargaKemasan = 4;
+      colHargaPerGram = 5;
+      colHarga = 6;
+      colProcess = 7;
       headerRowIdx = 0;
     }
   }
@@ -2387,6 +2409,17 @@ function scanAllBahanInActiveSheet() {
     columns: columns,
     defaultBahanColIndex: colBahan >= 0 ? colBahan : 0,
     defaultTargetColIndex: defaultTargetCol,
+    colIndexes: {
+      prep: colPrep,
+      bahan: colBahan,
+      gramasi: colGramasi,
+      satuan: colSatuan,
+      kemasan: colKemasan,
+      hargaKemasan: colHargaKemasan,
+      hargaPerGram: colHargaPerGram,
+      harga: colHarga,
+      process: colProcess
+    },
     uniqueBahanCount: uniqueBahanList.length,
     totalBahanRows: totalBahanRows,
     totalRecipes: Object.keys(recipeSet).length,

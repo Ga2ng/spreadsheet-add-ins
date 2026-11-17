@@ -343,9 +343,9 @@ Dua Mode Operasi:
 
         <div
           id="scanAllBahanListContainer"
-          class="max-h-96 overflow-y-auto border border-slate-200 rounded divide-y divide-slate-100 text-xs bg-white"
+          class="text-xs bg-white"
         >
-          <!-- Diisi dinamis per bahan -->
+          <!-- Diisi dinamis per bahan sebagai tabel audit lengkap -->
         </div>
 
         <!-- OPSI HIGHLIGHT HIJAU MUDA -->
@@ -917,7 +917,7 @@ Dua Mode Operasi:
     }
 
     if (filtered.length === 0) {
-      container.innerHTML = '<div class="p-3 text-center text-slate-400 italic">Tidak ada bahan yang cocok dengan pencarian "' + escapeHtml(scanAllFilterKeyword) + '".</div>';
+      container.innerHTML = '<div class="p-4 text-center text-slate-400 italic">Tidak ada bahan yang cocok dengan pencarian "' + escapeHtml(scanAllFilterKeyword) + '".</div>';
       updateMassalExecuteButton();
       return;
     }
@@ -925,73 +925,117 @@ Dua Mode Operasi:
     var targetColIdx = scanAllTargetColIndex !== null ? scanAllTargetColIndex : 6;
     var targetColObj = scanAllRawData && scanAllRawData.columns ? scanAllRawData.columns[targetColIdx] : null;
     var targetColLabel = targetColObj ? targetColObj.label : ("Kolom " + (targetColIdx + 1));
+    var targetColName = targetColObj ? (targetColObj.headerName || targetColObj.label) : "Kolom Target";
+    var colMap = scanAllRawData && scanAllRawData.colIndexes ? scanAllRawData.colIndexes : {};
 
-    var html = filtered.map(function(b) {
-      var isChecked = Boolean(scanAllCheckedMap[b.normKey]);
-      var curValDisp = "-";
-      var addresses = [];
-
-      if (b.occurrences && b.occurrences.length > 0) {
-        var firstOcc = b.occurrences[0];
-        if (firstOcc.colValuesMap && firstOcc.colValuesMap[targetColIdx]) {
-          curValDisp = firstOcc.colValuesMap[targetColIdx].dispValue || String(firstOcc.colValuesMap[targetColIdx].rawValue || "-");
-        }
-        addresses = b.occurrences.map(function(occ) {
-          if (occ.colValuesMap && occ.colValuesMap[targetColIdx]) {
-            return occ.colValuesMap[targetColIdx].cellAddress;
-          }
-          return "R" + occ.sheetRow;
-        });
+    function getColDisp(occ, colIdx) {
+      if (!occ || colIdx === undefined || colIdx === null || colIdx < 0) return "-";
+      if (occ.colValuesMap && occ.colValuesMap[colIdx]) {
+        var v = occ.colValuesMap[colIdx].dispValue;
+        if (v !== undefined && v !== null && String(v).trim() !== "") return String(v).trim();
+        var raw = occ.colValuesMap[colIdx].rawValue;
+        if (raw !== undefined && raw !== null && String(raw).trim() !== "") return String(raw).trim();
       }
+      return "-";
+    }
+
+    var rowsHtml = filtered.map(function(b) {
+      var isChecked = Boolean(scanAllCheckedMap[b.normKey]);
+      var firstOcc = (b.occurrences && b.occurrences.length > 0) ? b.occurrences[0] : null;
+
+      var valGramasi = getColDisp(firstOcc, colMap.gramasi);
+      var valSatuan = getColDisp(firstOcc, colMap.satuan);
+      var valKemasan = getColDisp(firstOcc, colMap.kemasan);
+      var valHargaKemasan = getColDisp(firstOcc, colMap.hargaKemasan);
+      var valHargaPerGram = getColDisp(firstOcc, colMap.hargaPerGram);
+      var valHarga = getColDisp(firstOcc, colMap.harga);
+      var valProcess = getColDisp(firstOcc, colMap.process);
 
       var currentInputVal = scanAllNewValuesMap[b.normKey] !== undefined ? scanAllNewValuesMap[b.normKey] : "";
+      var isTargetHargaKemasan = (targetColIdx === colMap.hargaKemasan);
+      var isTargetHargaPerGram = (targetColIdx === colMap.hargaPerGram);
+      var isTargetHarga = (targetColIdx === colMap.harga);
+      var isTargetProcess = (targetColIdx === colMap.process);
+      var isTargetKemasan = (targetColIdx === colMap.kemasan);
+      var isTargetGramasi = (targetColIdx === colMap.gramasi);
 
-      return '<div class="p-2.5 space-y-2 hover:bg-slate-50 transition border-b border-slate-100 last:border-b-0 ' + (isChecked ? 'bg-emerald-50/40' : '') + '">' +
-        '<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">' +
-          '<div class="flex items-start sm:items-center gap-2 min-w-0 flex-1">' +
-            '<input type="checkbox" ' + (isChecked ? 'checked' : '') + ' onchange="handleBahanItemChecked(\'' + escapeHtml(b.normKey) + '\', this.checked)" class="rounded text-emerald-600 focus:ring-emerald-500 w-3.5 h-3.5 mt-0.5 sm:mt-0 shrink-0 cursor-pointer" />' +
-            '<div class="min-w-0 flex-1 flex flex-wrap sm:flex-nowrap items-center gap-2">' +
-              '<span class="font-bold text-slate-900 text-xs sm:text-[13px] whitespace-nowrap">' + escapeHtml(b.name) + '</span>' +
-              '<span class="font-bold text-[9px] bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded border border-slate-200 shrink-0">' + b.recipesCount + ' Resep (' + b.totalCount + ' baris)</span>' +
-              '<div class="text-[10px] text-slate-500 truncate">' +
-                '<span>Saat Ini di ' + escapeHtml(targetColLabel) + ': </span>' +
-                '<strong class="font-mono text-slate-800">' + escapeHtml(curValDisp) + '</strong>' +
-                '<span class="text-slate-300 mx-1">•</span>' +
-                '<span class="font-mono text-[9px] text-emerald-800">' + escapeHtml(addresses.slice(0, 4).join(", ")) + (addresses.length > 4 ? "..." : "") + '</span>' +
-              '</div>' +
-            '</div>' +
+      var mainRow = '<tr class="hover:bg-emerald-50/30 transition-colors border-b border-slate-100 last:border-b-0 ' + (isChecked ? 'bg-emerald-50/60' : '') + '">' +
+        '<td class="p-2 text-center align-middle">' +
+          '<input type="checkbox" ' + (isChecked ? 'checked' : '') + ' onchange="handleBahanItemChecked(\'' + escapeHtml(b.normKey) + '\', this.checked)" class="rounded text-emerald-600 focus:ring-emerald-500 w-3.5 h-3.5 cursor-pointer" />' +
+        '</td>' +
+        '<td class="py-2.5 px-3 align-middle font-bold text-slate-900 whitespace-nowrap">' +
+          '<div class="flex items-center gap-1.5">' +
+            '<span>' + escapeHtml(b.name) + '</span>' +
+            (b.recipesCount > 1
+              ? '<button type="button" onclick="handleToggleBahanDetails(\'' + escapeHtml(b.normKey) + '\')" class="text-[9px] bg-slate-100 hover:bg-emerald-100 text-slate-600 hover:text-emerald-900 px-1.5 py-0.5 rounded border border-slate-200 font-medium transition cursor-pointer" title="Klik untuk rincian resep">' + b.recipesCount + ' Resep ▾</button>'
+              : '') +
           '</div>' +
+        '</td>' +
+        '<td class="py-2.5 px-2 align-middle text-right font-mono text-slate-700 whitespace-nowrap ' + (isTargetGramasi ? 'bg-emerald-100/70 font-bold text-emerald-950' : '') + '">' + escapeHtml(valGramasi) + '</td>' +
+        '<td class="py-2.5 px-2 align-middle text-center font-mono text-slate-500 text-[11px] whitespace-nowrap">' + escapeHtml(valSatuan) + '</td>' +
+        '<td class="py-2.5 px-2 align-middle text-right font-mono text-slate-700 whitespace-nowrap ' + (isTargetKemasan ? 'bg-emerald-100/70 font-bold text-emerald-950' : '') + '">' + escapeHtml(valKemasan) + '</td>' +
+        '<td class="py-2.5 px-2.5 align-middle text-right font-mono font-bold text-emerald-800 whitespace-nowrap ' + (isTargetHargaKemasan ? 'bg-emerald-100/80 text-emerald-950 border-x border-emerald-300' : 'bg-slate-50/60') + '">' + escapeHtml(valHargaKemasan) + '</td>' +
+        '<td class="py-2.5 px-2 align-middle text-right font-mono text-slate-600 whitespace-nowrap ' + (isTargetHargaPerGram ? 'bg-emerald-100/70 font-bold text-emerald-950 border-x border-emerald-300' : '') + '">' + escapeHtml(valHargaPerGram) + '</td>' +
+        '<td class="py-2.5 px-2 align-middle text-right font-mono text-slate-700 whitespace-nowrap ' + (isTargetHarga ? 'bg-emerald-100/70 font-bold text-emerald-950 border-x border-emerald-300' : '') + '">' + escapeHtml(valHarga) + '</td>' +
+        '<td class="py-2.5 px-2.5 align-middle text-right font-mono text-slate-700 whitespace-nowrap ' + (isTargetProcess ? 'bg-emerald-100/70 font-bold text-emerald-950 border-x border-emerald-300' : 'bg-amber-50/40 border-x border-amber-100') + '">' + escapeHtml(valProcess) + '</td>' +
+        '<td class="py-1.5 px-2 align-middle bg-emerald-50/40 border-x border-emerald-100">' +
+          '<input type="text" value="' + escapeHtml(currentInputVal) + '" oninput="handleBahanNewValueInput(\'' + escapeHtml(b.normKey) + '\', this.value)" placeholder="Nilai baru..." class="w-24 sm:w-28 px-2 py-1 text-xs font-mono font-bold text-emerald-950 bg-white border border-emerald-300 rounded focus:ring-1 focus:ring-emerald-500 shadow-2xs" />' +
+        '</td>' +
+        '<td class="py-1.5 px-2.5 align-middle text-center whitespace-nowrap">' +
+          '<button id="btnReplaceBahan_' + escapeHtml(b.normKey) + '" type="button" onclick="handleReplaceSingleBahan(\'' + escapeHtml(b.normKey) + '\')" class="px-2.5 sm:px-3 py-1 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-[11px] font-bold rounded shadow-xs inline-flex items-center gap-1 cursor-pointer transition" title="Replace all baris bahan ini di sheet">' +
+            '<span>⚡ Replace</span>' +
+          '</button>' +
+        '</td>' +
+      '</tr>';
 
-          '<!-- BAGIAN KANAN: INPUT NILAI BARU & TOMBOL REPLACE -->' +
-          '<div class="flex items-center gap-2 shrink-0 self-end sm:self-auto">' +
-            '<button type="button" onclick="handleToggleBahanDetails(\'' + escapeHtml(b.normKey) + '\')" class="text-[10px] text-emerald-700 hover:underline font-semibold cursor-pointer whitespace-nowrap mr-1">' +
-              'Detail Resep ▾' +
-            '</button>' +
-            '<div class="flex items-center gap-1">' +
-              '<span class="text-[10px] font-bold text-slate-600 shrink-0 hidden sm:inline">Ganti:</span>' +
-              '<input type="text" value="' + escapeHtml(currentInputVal) + '" oninput="handleBahanNewValueInput(\'' + escapeHtml(b.normKey) + '\', this.value)" placeholder="Nilai baru..." class="w-24 sm:w-28 px-2 py-1 text-xs font-mono font-bold text-emerald-950 bg-white border border-emerald-300 rounded focus:ring-1 focus:ring-emerald-500 shadow-2xs" />' +
-            '</div>' +
-            '<button id="btnReplaceBahan_' + escapeHtml(b.normKey) + '" type="button" onclick="handleReplaceSingleBahan(\'' + escapeHtml(b.normKey) + '\')" class="px-2.5 sm:px-3 py-1 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-[11px] font-bold rounded shadow-xs shrink-0 flex items-center gap-1 cursor-pointer transition" title="Replace all baris bahan ini di sheet">' +
-              '<span>⚡ Replace</span>' +
-            '</button>' +
+      var subRow = '<tr id="detailBox_' + escapeHtml(b.normKey) + '" class="hidden bg-slate-50 border-b border-slate-200">' +
+        '<td colspan="11" class="py-2 px-3.5 text-[11px] space-y-1.5">' +
+          '<div class="flex items-center justify-between font-bold text-slate-700">' +
+            '<span>Rincian ' + escapeHtml(b.name) + ' pada ' + b.recipesCount + ' Resep (' + b.totalCount + ' Baris):</span>' +
+            '<span class="text-[10px] text-slate-400 font-normal">Target: ' + escapeHtml(targetColLabel) + '</span>' +
           '</div>' +
-        '</div>' +
-
-        '<!-- ACCORDION DETAIL RESEP (HIDDEN BY DEFAULT) -->' +
-        '<div id="detailBox_' + escapeHtml(b.normKey) + '" class="hidden bg-slate-50 p-2 rounded text-[10px] space-y-1 border border-slate-200">' +
-          '<div class="font-bold text-slate-600">Muncul pada Resep:</div>' +
-          '<ul class="list-disc ml-4 space-y-0.5 text-slate-700 font-mono text-[9px]">' +
+          '<div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-1.5 font-mono text-[10px]">' +
             b.occurrences.map(function(occ) {
               var addr = occ.colValuesMap && occ.colValuesMap[targetColIdx] ? occ.colValuesMap[targetColIdx].cellAddress : ("Baris " + occ.sheetRow);
               var v = occ.colValuesMap && occ.colValuesMap[targetColIdx] ? occ.colValuesMap[targetColIdx].dispValue : "-";
-              return '<li><b>' + escapeHtml(occ.recipe) + '</b> → Sel ' + addr + ' (Nilai: ' + escapeHtml(v) + ')</li>';
+              return '<div class="bg-white p-1.5 rounded border border-slate-200 flex justify-between items-center shadow-2xs">' +
+                '<span class="truncate mr-2 text-slate-800" title="' + escapeHtml(occ.recipe) + '">' + escapeHtml(occ.recipe) + '</span>' +
+                '<span class="font-bold text-emerald-800 shrink-0">' + escapeHtml(addr) + ' (' + escapeHtml(v) + ')</span>' +
+              '</div>';
             }).join('') +
-          '</ul>' +
-        '</div>' +
-      '</div>';
+          '</div>' +
+        '</td>' +
+      '</tr>';
+
+      return mainRow + subRow;
     }).join('');
 
-    container.innerHTML = html;
+    var tableHtml = '<div class="overflow-x-auto max-h-[500px] overflow-y-auto border border-slate-200 rounded-lg shadow-2xs">' +
+      '<table class="w-full text-xs text-left border-collapse">' +
+        '<thead class="sticky top-0 bg-slate-100 text-slate-700 text-[11px] font-bold uppercase tracking-wider border-b border-slate-300 shadow-2xs z-10 select-none">' +
+          '<tr>' +
+            '<th class="p-2 text-center w-8 bg-slate-100">' +
+              '<input type="checkbox" onchange="handleToggleAllBahanItems(this.checked)" title="Pilih / Batal Semua" class="rounded text-emerald-600 focus:ring-emerald-500 w-3.5 h-3.5 cursor-pointer" />' +
+            '</th>' +
+            '<th class="py-2.5 px-3 min-w-[140px] bg-slate-100">Bahan</th>' +
+            '<th class="py-2.5 px-2 text-right min-w-[70px] bg-slate-100 ' + (targetColIdx === colMap.gramasi ? 'text-emerald-900 bg-emerald-100/70' : '') + '">Gramasi</th>' +
+            '<th class="py-2.5 px-2 text-center min-w-[55px] bg-slate-100">Satuan</th>' +
+            '<th class="py-2.5 px-2 text-right min-w-[80px] bg-slate-100 ' + (targetColIdx === colMap.kemasan ? 'text-emerald-900 bg-emerald-100/70' : '') + '">Kemasan</th>' +
+            '<th class="py-2.5 px-2.5 text-right min-w-[115px] ' + (targetColIdx === colMap.hargaKemasan ? 'bg-emerald-100 text-emerald-950 border-x border-emerald-300' : 'bg-slate-100') + '">Harga / Kemasan</th>' +
+            '<th class="py-2.5 px-2 text-right min-w-[95px] text-slate-600 ' + (targetColIdx === colMap.hargaPerGram ? 'bg-emerald-100 text-emerald-950 border-x border-emerald-300' : 'bg-slate-100') + '">Harga/Gr/Ml</th>' +
+            '<th class="py-2.5 px-2 text-right min-w-[85px] text-slate-600 ' + (targetColIdx === colMap.harga ? 'bg-emerald-100 text-emerald-950 border-x border-emerald-300' : 'bg-slate-100') + '">Harga</th>' +
+            '<th class="py-2.5 px-2.5 text-right min-w-[90px] text-slate-700 ' + (targetColIdx === colMap.process ? 'bg-emerald-100 text-emerald-950 border-x border-emerald-300' : 'bg-amber-50/70 border-x border-amber-200') + '">Process 10%</th>' +
+            '<th class="py-2.5 px-2 min-w-[130px] bg-emerald-50 text-emerald-900 border-x border-emerald-200">Ganti ' + escapeHtml(targetColName) + '</th>' +
+            '<th class="py-2.5 px-2.5 text-center min-w-[95px] bg-slate-100">Aksi</th>' +
+          '</tr>' +
+        '</thead>' +
+        '<tbody class="divide-y divide-slate-100 font-sans bg-white">' +
+          rowsHtml +
+        '</tbody>' +
+      '</table>' +
+    '</div>';
+
+    container.innerHTML = tableHtml;
     updateMassalExecuteButton();
   }
 
