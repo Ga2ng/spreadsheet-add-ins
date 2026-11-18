@@ -1,0 +1,824 @@
+<!--
+===============================================================================
+MENU 08: PEMBANDING FILE INVENTORY (InventoryFilePembandingView.html)
+===============================================================================
+Fitur:
+1. Memilih file atau sheet yang diawali 'INVENTORY' (multi-sumber fleksibel).
+2. Multi-Table Grid Scanner: Otomatis mem-parsing tabel yang posisinya pecah-pecah
+   acak baik secara HORIZONTAL (kolom berdampingan) maupun VERTIKAL (header berulang).
+3. Membaca baris HPP yang di-select / diblok di sheet aktif seperti biasa.
+4. Membandingkan harga HPP vs Harga Inventory secara cerdas & presisi.
+5. Dua tombol eksekusi:
+   - ⚡ 2. AUTO CREATE TABEL PEMBANDING DI SHEET (2 Warna: Hijau & Merah)
+   - ⚡ TERAPKAN / REPLACE HARGA INVENTORY KE SHEET (Warna Hijau Muda #dcfce7)
+===============================================================================
+-->
+<div id="viewInventoryFilePembanding" class="hidden space-y-3">
+
+  <!-- ========================================================================= -->
+  <!-- STEP 1: PILIH SUMBER DATASET INVENTORY                                    -->
+  <!-- ========================================================================= -->
+  <section class="bg-white rounded-lg border border-slate-200 p-3.5 shadow-sm space-y-3">
+    <div class="flex items-start justify-between gap-2 border-b border-slate-100 pb-2">
+      <div>
+        <h2 class="text-xs font-bold uppercase tracking-wider text-emerald-800">
+          1. Pilih Sumber File / Sheet INVENTORY
+        </h2>
+        <p class="text-[11px] text-slate-500">
+          Otomatis mendeteksi file &amp; sheet yang diawali <strong>INVENTORY</strong>. Parser cerdas membaca multi-tabel pecah horizontal &amp; vertikal.
+        </p>
+      </div>
+      <button
+        type="button"
+        onclick="loadInventorySourcesList()"
+        class="text-[10px] font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 px-2 py-1 rounded border border-slate-200 shadow-2xs cursor-pointer shrink-0"
+        title="Refresh daftar file & sheet inventori"
+      >
+        ↻ Refresh Sumber
+      </button>
+    </div>
+
+    <!-- DROPDOWN SUMBER INVENTORY -->
+    <div class="space-y-1">
+      <label for="selectInventorySource" class="block text-[11px] font-bold text-slate-700">
+        🎯 Pilih File / Sheet Sumber:
+      </label>
+      <div class="flex items-center gap-2">
+        <select
+          id="selectInventorySource"
+          class="flex-1 text-xs font-bold border border-emerald-400 rounded px-2.5 py-1.5 bg-white text-emerald-950 focus:ring-1 focus:ring-emerald-500 shadow-sm cursor-pointer"
+        >
+          <option value="">Memuat daftar sumber inventori...</option>
+        </select>
+        <button
+          type="button"
+          id="btnScanInventorySource"
+          onclick="handleScanSelectedInventorySource()"
+          class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-xs font-bold rounded shadow-xs shrink-0 flex items-center gap-1 cursor-pointer transition"
+          title="Scan dan muat dataset dari sumber terpilih"
+        >
+          <span>⚡ Scan Dataset</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- STATUS HASIL SCAN INVENTORY -->
+    <div id="boxInventoryScanStatus" class="hidden bg-emerald-50/70 border border-emerald-200 rounded-lg p-2.5 space-y-1.5">
+      <div class="flex items-center justify-between">
+        <span class="font-bold text-xs text-emerald-950 flex items-center gap-1.5">
+          <span class="inline-block w-2 h-2 rounded-full bg-emerald-500"></span>
+          <span id="lblInvLoadedSourceName">INVENTORY Terpilih</span>
+        </span>
+        <span id="lblInvLoadedItemCount" class="text-[10px] font-bold bg-white text-emerald-800 px-2 py-0.5 rounded border border-emerald-300">
+          0 Item Dimuat
+        </span>
+      </div>
+      <div id="lblInvLoadedCategories" class="text-[10px] text-emerald-800 truncate">
+        Kategori terdeteksi: -
+      </div>
+      <!-- Quick search item dalam inventory -->
+      <div class="pt-1">
+        <input
+          id="inputSearchInvLoadedItems"
+          type="text"
+          placeholder="🔍 Cari item dalam dataset inventory ini..."
+          oninput="handleFilterInvLoadedPreview(this.value)"
+          class="w-full px-2 py-1 text-[11px] bg-white border border-emerald-300 rounded focus:outline-none focus:ring-1 focus:ring-emerald-500 font-sans"
+        />
+      </div>
+      <!-- Mini preview items box (collapsible) -->
+      <div id="boxInvLoadedItemsPreview" class="hidden max-h-36 overflow-y-auto border border-emerald-200 rounded bg-white p-1 text-[10px] font-mono divide-y divide-slate-100">
+        <!-- Diisi dinamis -->
+      </div>
+    </div>
+  </section>
+
+  <!-- ========================================================================= -->
+  <!-- STEP 2: BACA BARIS HPP RESEP YANG DI-SELECT                               -->
+  <!-- ========================================================================= -->
+  <section class="bg-white rounded-lg border border-slate-200 p-3.5 shadow-sm space-y-2.5">
+    <div class="flex items-start justify-between gap-2">
+      <div>
+        <h2 class="text-xs font-bold uppercase tracking-wider text-emerald-800">
+          2. Baca Baris HPP yang Di-Select di Sheet
+        </h2>
+        <p class="text-[11px] text-slate-500">
+          Blok baris tabel resep HPP yang ingin dibandingkan (format standar 8 kolom resep), lalu klik tombol di bawah.
+        </p>
+      </div>
+      <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 shrink-0">
+        Sheet Aktif
+      </span>
+    </div>
+
+    <!-- TOMBOL BACA RANGE RESEP -->
+    <button
+      id="btnReadBlockedHppForInventory"
+      type="button"
+      onclick="handleReadBlockedHppForInventory()"
+      class="w-full py-2.5 px-3 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-xs font-bold rounded shadow flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+    >
+      <span>⚡ 1. Baca Baris HPP yang Di-Select &amp; Bandingkan</span>
+    </button>
+
+    <!-- INFO RANGE YANG TERBACA -->
+    <div id="boxBlockedHppRangeInfo" class="hidden bg-slate-50 border border-slate-200 rounded-md p-2 text-[11px] flex items-center justify-between">
+      <div class="truncate">
+        <span class="text-slate-500">Range Diblok: </span>
+        <strong id="lblBlockedHppAddress" class="font-mono text-slate-800">A5:H18</strong>
+        <span class="text-slate-300 mx-1">•</span>
+        <span id="lblBlockedHppRowCount" class="text-emerald-800 font-semibold">14 Baris</span>
+      </div>
+      <span id="lblBlockedHppRecipeName" class="font-bold text-[10px] bg-white px-2 py-0.5 rounded border border-slate-200 text-slate-700">
+        Resep Terdeteksi
+      </span>
+    </div>
+  </section>
+
+  <!-- ========================================================================= -->
+  <!-- STEP 3: PREVIEW TABEL PERBANDINGAN LENGKAP                                 -->
+  <!-- ========================================================================= -->
+  <div id="boxInventoryComparisonPreview" class="hidden space-y-3">
+
+    <!-- RINGKASAN KPI / KARTU STATUS -->
+    <section class="bg-white rounded-lg border border-slate-200 p-3 shadow-sm space-y-2.5">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+        <span class="text-xs font-bold uppercase tracking-wider text-slate-800">
+          Hasil Evaluasi HPP vs Inventory (<span id="lblComparisonTargetSourceName" class="text-emerald-700">INVENTORY</span>)
+        </span>
+        <div class="flex items-center gap-1 text-[10px]">
+          <span class="font-bold text-slate-500">Status 2 Warna:</span>
+          <span class="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold border border-emerald-300">Hijau (<= HPP)</span>
+          <span class="px-1.5 py-0.5 rounded bg-red-100 text-red-800 font-bold border border-red-300">Merah (> HPP)</span>
+        </div>
+      </div>
+
+      <!-- KARTU STATISTIK -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
+        <div class="bg-slate-50 p-2 rounded border border-slate-200">
+          <div class="text-[10px] text-slate-500 font-medium">Total Bahan</div>
+          <div id="kpiTotalBahan" class="text-base font-bold text-slate-800 font-mono">0</div>
+        </div>
+        <div class="bg-emerald-50 p-2 rounded border border-emerald-200">
+          <div class="text-[10px] text-emerald-700 font-medium">Sesuai / Turun</div>
+          <div id="kpiSesuai" class="text-base font-bold text-emerald-800 font-mono">0</div>
+        </div>
+        <div class="bg-red-50 p-2 rounded border border-red-200">
+          <div class="text-[10px] text-red-700 font-medium">Harga Naik</div>
+          <div id="kpiNaik" class="text-base font-bold text-red-800 font-mono">0</div>
+        </div>
+        <div class="bg-amber-50 p-2 rounded border border-amber-200">
+          <div class="text-[10px] text-amber-700 font-medium">Tidak Ditemukan</div>
+          <div id="kpiTidakDitemukan" class="text-base font-bold text-amber-800 font-mono">0</div>
+        </div>
+      </div>
+
+      <!-- FILTER PENCARIAN HASIL TABEL -->
+      <div class="pt-1">
+        <input
+          id="inputFilterComparisonTable"
+          type="text"
+          placeholder="🔍 Saring bahan dalam tabel hasil perbandingan..."
+          oninput="handleFilterComparisonTable(this.value)"
+          class="w-full px-2.5 py-1.5 text-xs bg-slate-50 border border-slate-300 rounded focus:bg-white focus:outline-none focus:ring-1 focus:ring-emerald-500 font-sans"
+        />
+      </div>
+
+      <!-- TABEL AUDIT DETAIL PERBANDINGAN RESPONSIF -->
+      <div class="overflow-x-auto max-h-[460px] overflow-y-auto border border-slate-200 rounded-lg shadow-2xs">
+        <table class="w-full text-xs text-left border-collapse">
+          <thead class="sticky top-0 bg-slate-100 text-slate-700 text-[11px] font-bold uppercase tracking-wider border-b border-slate-300 shadow-2xs z-10 select-none">
+            <tr>
+              <th class="p-2 text-center w-8 bg-slate-100">
+                <input
+                  type="checkbox"
+                  id="chkToggleAllComparisonItems"
+                  checked
+                  onchange="handleToggleAllComparisonItems(this.checked)"
+                  title="Pilih / Batal Semua"
+                  class="rounded text-emerald-600 focus:ring-emerald-500 w-3.5 h-3.5 cursor-pointer"
+                />
+              </th>
+              <th class="py-2.5 px-3 min-w-[140px] bg-slate-100">Bahan Resep</th>
+              <th class="py-2.5 px-2 text-right min-w-[65px] bg-slate-100">Gramasi</th>
+              <th class="py-2.5 px-2 text-center min-w-[50px] bg-slate-100">Satuan</th>
+              <th class="py-2.5 px-2 text-right min-w-[75px] bg-slate-100">Kemasan</th>
+              <th class="py-2.5 px-2.5 text-right min-w-[110px] bg-slate-100 text-slate-800">Harga HPP</th>
+              <th class="py-2.5 px-2.5 text-right min-w-[115px] bg-emerald-100 text-emerald-950 border-x border-emerald-300">Harga Inventory</th>
+              <th class="py-2.5 px-2 min-w-[110px] bg-slate-100 text-slate-600">Kategori Inv</th>
+              <th class="py-2.5 px-2.5 text-right min-w-[95px] bg-slate-100 text-slate-800">Selisih</th>
+              <th class="py-2.5 px-3 min-w-[150px] bg-slate-900 text-white">Status / NOTE</th>
+            </tr>
+          </thead>
+          <tbody id="tbodyInventoryComparisonList" class="divide-y divide-slate-100 font-sans bg-white">
+            <!-- Diisi dinamis -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ========================================================================= -->
+    <!-- STEP 4: TOMBOL EKSEKUSI AUTO CREATE & REPLACE                             -->
+    <!-- ========================================================================= -->
+    <section class="bg-white rounded-lg border border-slate-200 p-3 shadow-sm space-y-2.5">
+      <div class="text-[10px] text-slate-500">
+        Pilih aksi untuk menerapkan hasil perbandingan ke Google Sheet:
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        <!-- TOMBOL 1: AUTO CREATE TABEL PEMBANDING -->
+        <button
+          type="button"
+          id="btnExecuteAutoCreateInventoryTable"
+          onclick="handleExecuteAutoCreateInventoryTable()"
+          class="w-full py-2.5 px-3 bg-slate-800 hover:bg-slate-900 active:bg-black text-white text-xs font-bold rounded shadow flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+          title="Buat kolom tabel pembanding 2 warna sejajar di sebelah kanan tabel resep"
+        >
+          <span>⚡ 2. AUTO CREATE TABEL PEMBANDING</span>
+        </button>
+
+        <!-- TOMBOL 2: TERAPKAN REPLACE HARGA KEMASAN -->
+        <button
+          type="button"
+          id="btnExecuteReplaceInventoryToHpp"
+          onclick="handleExecuteReplaceInventoryToHpp()"
+          class="w-full py-2.5 px-3 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-xs font-bold rounded shadow flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+          title="Terapkan langsung harga inventory ke kolom HARGA / KEMASAN di sheet resep"
+        >
+          <span>⚡ GANTI HARGA / KEMASAN DI SHEET</span>
+        </button>
+      </div>
+      <p class="text-[10px] text-slate-400 text-center">
+        *Auto Create akan membuat tabel sejajar sel target. Replace akan mewarnai sel yang diubah dengan warna hijau muda (#dcfce7).
+      </p>
+    </section>
+
+  </div>
+
+</div>
+
+<script>
+(function() {
+  // State Internal Fitur 08
+  var availableSources = [];
+  var currentLoadedInventory = null;
+  var comparisonResult = null;
+  var filterComparisonKeyword = "";
+  var comparisonCheckedMap = {};
+
+  window.initInventoryFilePembandingView = function() {
+    loadInventorySourcesList();
+  };
+
+  /**
+   * 1. Memuat daftar sumber file & sheet INVENTORY dari backend
+   */
+  window.loadInventorySourcesList = function() {
+    var select = document.getElementById("selectInventorySource");
+    if (select) {
+      select.innerHTML = '<option value="">Sedang memindai file & sheet INVENTORY...</option>';
+    }
+
+    if (hasGoogleScriptRun()) {
+      google.script.run
+        .withSuccessHandler(function(res) {
+          if (!res || !res.sources || res.sources.length === 0) {
+            if (select) select.innerHTML = '<option value="">Tidak ditemukan file/sheet INVENTORY</option>';
+            showAuditStatus("warning", "Tidak ditemukan sheet atau file bertuliskan INVENTORY.");
+            return;
+          }
+          availableSources = res.sources;
+          renderSourcesDropdown(availableSources);
+          showAuditStatus("info", "Ditemukan " + res.totalSources + " sumber data inventori.");
+        })
+        .withFailureHandler(function(err) {
+          if (select) select.innerHTML = '<option value="">Gagal memuat sumber inventori</option>';
+          showAuditStatus("error", "Gagal memuat sumber inventori: " + (err.message || err));
+        })
+        .getAvailableInventorySources();
+    } else {
+      // Mock simulasi client-side
+      availableSources = [
+        { id: "mock_1", type: "sheet", name: "📑 Sheet: INVENTORY CIAMSO SBY OKT (Sheet Aktif)", sheetName: "INVENTORY CIAMSO SBY OKT", isPriority: true },
+        { id: "mock_2", type: "dataset_gs", name: "⚡ Slot .gs: CIAMSO SBY (116 Item)", isPriority: true },
+        { id: "mock_3", type: "sheet", name: "📄 Sheet: HPP CENTRAL OKTOBER 26", sheetName: "HPP CENTRAL OKTOBER 26", isPriority: false }
+      ];
+      renderSourcesDropdown(availableSources);
+    }
+  };
+
+  function renderSourcesDropdown(sources) {
+    var select = document.getElementById("selectInventorySource");
+    if (!select) return;
+
+    var html = sources.map(function(s, idx) {
+      return '<option value="' + idx + '" ' + (s.isPriority ? 'selected' : '') + '>' + escapeHtml(s.name) + '</option>';
+    }).join('');
+
+    select.innerHTML = html;
+  }
+
+  /**
+   * 2. Scan & Muat Dataset Inventory terpilih
+   */
+  window.handleScanSelectedInventorySource = function() {
+    var select = document.getElementById("selectInventorySource");
+    var idx = select ? Number(select.value) : -1;
+    if (isNaN(idx) || idx < 0 || !availableSources[idx]) {
+      showAuditStatus("warning", "Pilih sumber file/sheet INVENTORY terlebih dahulu.");
+      return;
+    }
+
+    var selectedSource = availableSources[idx];
+    var btn = document.getElementById("btnScanInventorySource");
+    var origHtml = btn ? btn.innerHTML : "⚡ Scan Dataset";
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = '<span class="animate-spin inline-block text-[10px]">⏳</span> Memindai...';
+    }
+
+    showAuditStatus("info", "Memindai tabel pada " + selectedSource.name + "...");
+
+    if (hasGoogleScriptRun()) {
+      google.script.run
+        .withSuccessHandler(function(res) {
+          if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = origHtml;
+          }
+          currentLoadedInventory = res;
+          displayLoadedInventoryStatus(res);
+          showAuditStatus("success", "✓ Berhasil memuat " + res.totalItems + " item dari " + res.totalCategories + " kategori tabel.");
+        })
+        .withFailureHandler(function(err) {
+          if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = origHtml;
+          }
+          showAuditStatus("error", "Gagal memindai inventory: " + (err.message || err));
+        })
+        .scanInventorySource(selectedSource);
+    } else {
+      setTimeout(function() {
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = origHtml;
+        }
+        currentLoadedInventory = {
+          sourceName: selectedSource.name,
+          totalItems: 116,
+          totalCategories: 9,
+          categories: [
+            { name: "INVENTORI FOOD & SNACK", count: 45 },
+            { name: "INVENTORI BEVERAGE", count: 30 },
+            { name: "INVENTORI PACKAGING", count: 41 }
+          ],
+          items: [
+            { id: "inv-1", name: "AYAM CHARSIU (PER VACUM @5 PORSI)", unit: "PORSI", price: 13814, category: "INVENTORI FOOD & SNACK" },
+            { id: "inv-2", name: "fillet paha", unit: "GR", price: 48, category: "INVENTORI FOOD & SNACK" },
+            { id: "inv-3", name: "minyak wijen", unit: "GR", price: 71, category: "INVENTORI FOOD & SNACK" }
+          ]
+        };
+        displayLoadedInventoryStatus(currentLoadedInventory);
+        showAuditStatus("success", "Simulasi scan berhasil: 116 item dimuat.");
+      }, 500);
+    }
+  };
+
+  function displayLoadedInventoryStatus(res) {
+    var box = document.getElementById("boxInventoryScanStatus");
+    var lblName = document.getElementById("lblInvLoadedSourceName");
+    var lblCount = document.getElementById("lblInvLoadedItemCount");
+    var lblCats = document.getElementById("lblInvLoadedCategories");
+
+    if (box) box.classList.remove("hidden");
+    if (lblName) lblName.textContent = res.sourceName || "INVENTORY";
+    if (lblCount) lblCount.textContent = res.totalItems + " Item Dimuat";
+
+    if (lblCats && res.categories) {
+      var catNames = res.categories.map(function(c) {
+        return (typeof c === "object" ? c.name : c) + (c.count ? " (" + c.count + ")" : "");
+      }).join(" • ");
+      lblCats.textContent = "Kategori: " + (catNames || "Semua");
+    }
+
+    renderInvLoadedItemsPreview(res.items || []);
+  }
+
+  function renderInvLoadedItemsPreview(items) {
+    var previewBox = document.getElementById("boxInvLoadedItemsPreview");
+    if (!previewBox) return;
+
+    if (!items || items.length === 0) {
+      previewBox.classList.add("hidden");
+      return;
+    }
+
+    previewBox.classList.remove("hidden");
+    var html = items.slice(0, 30).map(function(it) {
+      return '<div class="py-0.5 px-1 flex justify-between items-center hover:bg-slate-50">' +
+        '<span class="truncate mr-2">' + escapeHtml(it.name) + '</span>' +
+        '<span class="text-emerald-700 font-bold shrink-0">Rp ' + formatIDR(it.price) + ' / ' + escapeHtml(it.unit) + '</span>' +
+      '</div>';
+    }).join('');
+
+    if (items.length > 30) {
+      html += '<div class="p-1 text-center text-slate-400 italic">... dan ' + (items.length - 30) + ' item lainnya</div>';
+    }
+
+    previewBox.innerHTML = html;
+  }
+
+  window.handleFilterInvLoadedPreview = function(q) {
+    if (!currentLoadedInventory || !currentLoadedInventory.items) return;
+    var query = String(q || "").toLowerCase().trim();
+    if (!query) {
+      renderInvLoadedItemsPreview(currentLoadedInventory.items);
+      return;
+    }
+    var filtered = currentLoadedInventory.items.filter(function(it) {
+      return it.name.toLowerCase().indexOf(query) !== -1 || (it.category && it.category.toLowerCase().indexOf(query) !== -1);
+    });
+    renderInvLoadedItemsPreview(filtered);
+  };
+
+  /**
+   * 3. Baca Range HPP yang Di-Select & Bandingkan
+   */
+  window.handleReadBlockedHppForInventory = function() {
+    if (!currentLoadedInventory || !currentLoadedInventory.items || currentLoadedInventory.items.length === 0) {
+      showAuditStatus("warning", "Scan dan muat dataset INVENTORY terlebih dahulu di Langkah 1.");
+      return;
+    }
+
+    var btn = document.getElementById("btnReadBlockedHppForInventory");
+    var origHtml = btn ? btn.innerHTML : "⚡ 1. Baca Baris HPP yang Di-Select";
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = '<span class="animate-spin inline-block text-[10px]">⏳</span> Membaca Sel & Membandingkan...';
+    }
+
+    if (hasGoogleScriptRun()) {
+      google.script.run
+        .withSuccessHandler(function(rangeData) {
+          // Kirim range data ke backend untuk perbandingan lengkap
+          google.script.run
+            .withSuccessHandler(function(compRes) {
+              if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = origHtml;
+              }
+              comparisonResult = compRes;
+              displayComparisonResult(compRes, rangeData);
+              showAuditStatus("success", "✓ Berhasil membandingkan " + compRes.totalBahan + " bahan resep vs " + compRes.sourceName + "!");
+            })
+            .withFailureHandler(function(compErr) {
+              if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = origHtml;
+              }
+              showAuditStatus("error", "Gagal perbandingan: " + (compErr.message || compErr));
+            })
+            .compareBlockedHppWithInventory({
+              blockedRange: rangeData,
+              inventoryItems: currentLoadedInventory.items,
+              inventorySourceName: currentLoadedInventory.sourceName
+            });
+        })
+        .withFailureHandler(function(err) {
+          if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = origHtml;
+          }
+          showAuditStatus("error", "Gagal membaca sel: " + (err.message || err));
+        })
+        .readSelectedRangeFromSheet();
+    } else {
+      setTimeout(function() {
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = origHtml;
+        }
+        var mockComp = {
+          sourceName: currentLoadedInventory.sourceName || "INVENTORY CIAMSO",
+          totalBahan: 4,
+          matchedCount: 3,
+          naikCount: 1,
+          turunCount: 2,
+          notMatchedCount: 1,
+          comparisonItems: [
+            {
+              sheetRow: 5,
+              cellAddress: "G5",
+              recipe: "AYAM CHARSIU REGULER",
+              bahan: "fillet paha",
+              gramasi: 1000,
+              satuan: "gr",
+              kemasan: 1000,
+              hargaHppKemasan: 48000,
+              inventoryPrice: 48000,
+              inventoryUnit: "PORSI",
+              inventoryCategory: "INVENTORI FOOD",
+              diff: 0,
+              status: "SESUAI",
+              note: "SESUAI",
+              matchedItem: { name: "fillet paha" }
+            },
+            {
+              sheetRow: 6,
+              cellAddress: "G6",
+              recipe: "AYAM CHARSIU REGULER",
+              bahan: "minyak wijen",
+              gramasi: 45,
+              satuan: "gr",
+              kemasan: 620,
+              hargaHppKemasan: 44000,
+              inventoryPrice: 46000,
+              inventoryUnit: "BOTOL",
+              inventoryCategory: "INVENTORI FOOD",
+              diff: 2000,
+              status: "NAIK",
+              note: "NAIK Rp 2.000",
+              matchedItem: { name: "minyak wijen" }
+            },
+            {
+              sheetRow: 7,
+              cellAddress: "G7",
+              recipe: "AYAM CHARSIU REGULER",
+              bahan: "madu",
+              gramasi: 135,
+              satuan: "gr",
+              kemasan: 1000,
+              hargaHppKemasan: 49000,
+              inventoryPrice: 45000,
+              inventoryUnit: "BOTOL",
+              inventoryCategory: "INVENTORI FOOD",
+              diff: -4000,
+              status: "SESUAI",
+              note: "TURUN Rp 4.000",
+              matchedItem: { name: "madu" }
+            },
+            {
+              sheetRow: 8,
+              cellAddress: "G8",
+              recipe: "AYAM CHARSIU REGULER",
+              bahan: "powder ngohiong spesial",
+              gramasi: 15,
+              satuan: "gr",
+              kemasan: 1000,
+              hargaHppKemasan: 117000,
+              inventoryPrice: 0,
+              inventoryUnit: "-",
+              inventoryCategory: "-",
+              diff: 0,
+              status: "TIDAK DITEMUKAN",
+              note: "Item tidak ditemukan",
+              matchedItem: null
+            }
+          ]
+        };
+        comparisonResult = mockComp;
+        displayComparisonResult(mockComp, { address: "A5:H8", rowCount: 4, sheetName: "HPP CENTRAL" });
+        showAuditStatus("success", "Simulasi perbandingan selesai: 4 bahan dievaluasi.");
+      }, 500);
+    }
+  };
+
+  function displayComparisonResult(compRes, rangeData) {
+    // 1. Tampilkan Info Range
+    var boxRange = document.getElementById("boxBlockedHppRangeInfo");
+    var lblAddr = document.getElementById("lblBlockedHppAddress");
+    var lblRows = document.getElementById("lblBlockedHppRowCount");
+    var lblRec = document.getElementById("lblBlockedHppRecipeName");
+
+    if (boxRange) boxRange.classList.remove("hidden");
+    if (lblAddr) lblAddr.textContent = (rangeData.sheetName ? rangeData.sheetName + "!" : "") + (rangeData.address || "-");
+    if (lblRows) lblRows.textContent = (rangeData.rowCount || compRes.totalBahan) + " Baris";
+    if (lblRec && compRes.comparisonItems && compRes.comparisonItems[0]) {
+      lblRec.textContent = compRes.comparisonItems[0].recipe || "Resep Umum";
+    }
+
+    // 2. Tampilkan Box Hasil & KPI
+    var boxComp = document.getElementById("boxInventoryComparisonPreview");
+    if (boxComp) boxComp.classList.remove("hidden");
+
+    var lblTargetName = document.getElementById("lblComparisonTargetSourceName");
+    if (lblTargetName) lblTargetName.textContent = compRes.sourceName || "INVENTORY";
+
+    var kpiTotal = document.getElementById("kpiTotalBahan");
+    var kpiSesuai = document.getElementById("kpiSesuai");
+    var kpiNaik = document.getElementById("kpiNaik");
+    var kpiMissing = document.getElementById("kpiTidakDitemukan");
+
+    if (kpiTotal) kpiTotal.textContent = compRes.totalBahan;
+    if (kpiSesuai) kpiSesuai.textContent = compRes.turunCount;
+    if (kpiNaik) kpiNaik.textContent = compRes.naikCount;
+    if (kpiMissing) kpiMissing.textContent = compRes.notMatchedCount;
+
+    // Default semua item tercentang
+    comparisonCheckedMap = {};
+    (compRes.comparisonItems || []).forEach(function(ci, idx) {
+      comparisonCheckedMap[idx] = true;
+    });
+
+    renderComparisonTable();
+  }
+
+  function renderComparisonTable() {
+    var tbody = document.getElementById("tbodyInventoryComparisonList");
+    if (!tbody || !comparisonResult || !comparisonResult.comparisonItems) return;
+
+    var items = comparisonResult.comparisonItems;
+    var filtered = items.filter(function(ci) {
+      if (!filterComparisonKeyword) return true;
+      var q = filterComparisonKeyword.toLowerCase();
+      return ci.bahan.toLowerCase().indexOf(q) !== -1 ||
+             (ci.matchedItem && ci.matchedItem.name.toLowerCase().indexOf(q) !== -1) ||
+             ci.status.toLowerCase().indexOf(q) !== -1 ||
+             ci.recipe.toLowerCase().indexOf(q) !== -1;
+    });
+
+    if (filtered.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="10" class="p-4 text-center text-slate-400 italic">Tidak ada bahan yang cocok dengan pencarian.</td></tr>';
+      return;
+    }
+
+    var html = filtered.map(function(ci, origIdx) {
+      var isChecked = Boolean(comparisonCheckedMap[origIdx]);
+      var isNaik = ci.status === "NAIK";
+      var isSesuai = ci.status === "SESUAI";
+      var isMissing = ci.status === "TIDAK DITEMUKAN";
+
+      var rowBg = isChecked ? (isNaik ? "bg-red-50/40" : (isSesuai ? "bg-emerald-50/40" : "bg-slate-50/40")) : "";
+      var statusBadge = "";
+      if (isNaik) {
+        statusBadge = '<span class="px-2 py-0.5 rounded font-bold text-[10px] bg-red-100 text-red-800 border border-red-200">🔺 ' + escapeHtml(ci.note) + '</span>';
+      } else if (isSesuai) {
+        statusBadge = '<span class="px-2 py-0.5 rounded font-bold text-[10px] bg-emerald-100 text-emerald-800 border border-emerald-200">🟢 ' + escapeHtml(ci.note) + '</span>';
+      } else {
+        statusBadge = '<span class="px-1.5 py-0.5 rounded font-bold text-[10px] bg-amber-50 text-amber-800 border border-amber-200">⚠ Tidak Ada</span>';
+      }
+
+      var diffDisplay = "-";
+      if (ci.matchedItem) {
+        diffDisplay = ci.diff > 0 ? ("+Rp " + formatIDR(ci.diff)) : (ci.diff < 0 ? ("-Rp " + formatIDR(-ci.diff)) : "Rp 0");
+      }
+
+      return '<tr class="hover:bg-slate-50 transition-colors border-b border-slate-100 ' + rowBg + '">' +
+        '<td class="p-2 text-center align-middle">' +
+          '<input type="checkbox" ' + (isChecked ? 'checked' : '') + ' onchange="handleComparisonItemChecked(' + origIdx + ', this.checked)" class="rounded text-emerald-600 focus:ring-emerald-500 w-3.5 h-3.5 cursor-pointer" />' +
+        '</td>' +
+        '<td class="py-2.5 px-3 align-middle font-bold text-slate-900 whitespace-nowrap">' +
+          '<div class="flex items-center gap-1.5">' +
+            '<span>' + escapeHtml(ci.bahan) + '</span>' +
+            '<span class="font-mono text-[9px] text-slate-400">(' + escapeHtml(ci.cellAddress) + ')</span>' +
+          '</div>' +
+        '</td>' +
+        '<td class="py-2.5 px-2 align-middle text-right font-mono text-slate-700 whitespace-nowrap">' + formatIDR(ci.gramasi) + '</td>' +
+        '<td class="py-2.5 px-2 align-middle text-center font-mono text-slate-500 text-[11px] whitespace-nowrap">' + escapeHtml(ci.satuan) + '</td>' +
+        '<td class="py-2.5 px-2 align-middle text-right font-mono text-slate-700 whitespace-nowrap">' + formatIDR(ci.kemasan) + '</td>' +
+        '<td class="py-2.5 px-2.5 align-middle text-right font-mono font-bold text-slate-800 whitespace-nowrap">Rp ' + formatIDR(ci.hargaHppKemasan) + '</td>' +
+        '<td class="py-2.5 px-2.5 align-middle text-right font-mono font-bold whitespace-nowrap ' + (isNaik ? 'text-red-700 bg-red-100/50' : 'text-emerald-800 bg-emerald-100/50') + ' border-x border-emerald-200">' +
+          (ci.inventoryPrice > 0 ? ('Rp ' + formatIDR(ci.inventoryPrice)) : '-') +
+        '</td>' +
+        '<td class="py-2.5 px-2 align-middle text-[10px] text-slate-600 truncate max-w-[120px]" title="' + escapeHtml(ci.inventoryCategory) + '">' +
+          escapeHtml(ci.inventoryCategory) +
+        '</td>' +
+        '<td class="py-2.5 px-2.5 align-middle text-right font-mono font-bold whitespace-nowrap ' + (isNaik ? 'text-red-700' : 'text-emerald-700') + '">' +
+          diffDisplay +
+        '</td>' +
+        '<td class="py-2.5 px-3 align-middle whitespace-nowrap">' +
+          statusBadge +
+        '</td>' +
+      '</tr>';
+    }).join('');
+
+    tbody.innerHTML = html;
+  }
+
+  window.handleComparisonItemChecked = function(idx, checked) {
+    comparisonCheckedMap[idx] = Boolean(checked);
+    renderComparisonTable();
+  };
+
+  window.handleToggleAllComparisonItems = function(checked) {
+    if (!comparisonResult || !comparisonResult.comparisonItems) return;
+    comparisonResult.comparisonItems.forEach(function(ci, idx) {
+      comparisonCheckedMap[idx] = Boolean(checked);
+    });
+    renderComparisonTable();
+  };
+
+  window.handleFilterComparisonTable = function(q) {
+    filterComparisonKeyword = q;
+    renderComparisonTable();
+  };
+
+  /**
+   * 4. Eksekusi Auto Create Tabel Pembanding (2 Warna di Sheet)
+   */
+  window.handleExecuteAutoCreateInventoryTable = function() {
+    if (!comparisonResult || !comparisonResult.tablePayload) {
+      showAuditStatus("warning", "Jalankan perbandingan terlebih dahulu.");
+      return;
+    }
+
+    var btn = document.getElementById("btnExecuteAutoCreateInventoryTable");
+    var origHtml = btn ? btn.innerHTML : "⚡ 2. AUTO CREATE TABEL PEMBANDING";
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = '<span class="animate-spin inline-block text-[10px]">⏳</span> Membuat Tabel di Sheet...';
+    }
+
+    if (hasGoogleScriptRun()) {
+      google.script.run
+        .withSuccessHandler(function(res) {
+          if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<span>✓ Tabel Dibuat!</span>';
+          }
+          showAuditStatus("success", "✓ Berhasil membuat tabel pembanding pada range " + res.rangeAddress + " di sheet " + res.sheetName + "!");
+        })
+        .withFailureHandler(function(err) {
+          if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = origHtml;
+          }
+          showAuditStatus("error", "Gagal membuat tabel: " + (err.message || err));
+        })
+        .writeComparisonTableToSheet(comparisonResult.tablePayload);
+    } else {
+      setTimeout(function() {
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = '<span>✓ Tabel Dibuat!</span>';
+        }
+        showAuditStatus("success", "Simulasi Auto Create berhasil pada sel target!");
+      }, 500);
+    }
+  };
+
+  /**
+   * 5. Eksekusi Replace Langsung Nilai Kolom HARGA / KEMASAN di Sheet
+   */
+  window.handleExecuteReplaceInventoryToHpp = function() {
+    if (!comparisonResult || !comparisonResult.replacePayload) {
+      showAuditStatus("warning", "Jalankan perbandingan terlebih dahulu.");
+      return;
+    }
+
+    // Filter hanya item yang dicentang
+    var selectedItems = (comparisonResult.replacePayload.items || []).filter(function(item, idx) {
+      return Boolean(comparisonCheckedMap[idx]);
+    });
+
+    if (selectedItems.length === 0) {
+      showAuditStatus("warning", "Centang minimal satu bahan yang ingin di-replace ke sheet.");
+      return;
+    }
+
+    var btn = document.getElementById("btnExecuteReplaceInventoryToHpp");
+    var origHtml = btn ? btn.innerHTML : "⚡ GANTI HARGA / KEMASAN DI SHEET";
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = '<span class="animate-spin inline-block text-[10px]">⏳</span> Mengganti di Sheet...';
+    }
+
+    var payload = {
+      sheetName: comparisonResult.replacePayload.sheetName,
+      highlightGreen: true,
+      highlightColor: "#dcfce7",
+      items: selectedItems
+    };
+
+    if (hasGoogleScriptRun()) {
+      google.script.run
+        .withSuccessHandler(function(res) {
+          if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<span>✓ Harga Berhasil Diganti!</span>';
+          }
+          showAuditStatus("success", "✓ Sukses mengganti " + res.totalUpdated + " sel pada kolom HARGA / KEMASAN dengan warna hijau!");
+        })
+        .withFailureHandler(function(err) {
+          if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = origHtml;
+          }
+          showAuditStatus("error", "Gagal replace: " + (err.message || err));
+        })
+        .applyReplaceHargaKemasanToSheet(payload);
+    } else {
+      setTimeout(function() {
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = '<span>✓ Harga Berhasil Diganti!</span>';
+        }
+        showAuditStatus("success", "Simulasi replace berhasil untuk " + selectedItems.length + " sel!");
+      }, 500);
+    }
+  };
+
+})();
+</script>
+

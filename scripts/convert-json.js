@@ -454,6 +454,7 @@ ${parsedDatasets
     { src: "01-code-backend/HppCentralParser.gs", dest: "HppCentralParser.gs" },
     { src: "01-code-backend/HppCentralOktData.gs", dest: "HppCentralOktData.gs" },
     { src: "01-code-backend/InventoryOutletParser.gs", dest: "InventoryOutletParser.gs" },
+    { src: "01-code-backend/InventoryFileScanner.gs", dest: "InventoryFileScanner.gs" },
     { src: "02-data-pembanding/DataPembanding.gs", dest: "DataPembanding.gs" },
     { src: "02-data-pembanding/DataInventoryOutlet.gs", dest: "DataInventoryOutlet.gs" },
     { src: "03-sidebar-ui/Sidebar.html", dest: "Sidebar.html" },
@@ -464,6 +465,7 @@ ${parsedDatasets
     { src: "03-sidebar-ui/CiamsoPembandingView.html", dest: "CiamsoPembandingView.html" },
     { src: "03-sidebar-ui/ReplaceDataView.html", dest: "ReplaceDataView.html" },
     { src: "03-sidebar-ui/HppCentralParserView.html", dest: "HppCentralParserView.html" },
+    { src: "03-sidebar-ui/InventoryFilePembandingView.html", dest: "InventoryFilePembandingView.html" },
     { src: "03-sidebar-ui/ParserView.html", dest: "ParserView.html" }
   ];
 

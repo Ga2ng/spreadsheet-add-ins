@@ -17,8 +17,13 @@ function onOpen() {
     .addItem("🗗 Buka Mini Floating (Bebas Geser 460px)", "showModelessMiniAuditTools")
     .addItem("🗕 Buka di Sidebar Kanan", "showSidebar")
     .addSeparator()
+    .addItem("⚡ Menu 08: Pembanding File Inventory", "showInventoryFilePembanding")
     .addItem("⚡ Menu 03: Replace All Bahan (Modeless Luas)", "showModelessReplaceHpp")
     .addToUi();
+}
+
+function showInventoryFilePembanding() {
+  showModelessAuditTools("inventory-file-pembanding");
 }
 
 function showSidebar(mode) {
@@ -548,7 +553,7 @@ function applyReplaceHargaKemasanToSheet(payload) {
   // Selalu targetkan Sheet yang sedang aktif saat ini sesuai instruksi
   var sheet = ss.getActiveSheet();
 
-  var highlightGreen = payload.highlightGreen !== false && (payload.highlightGreen || payload.highlightColor);
+  var highlightGreen = payload.highlightGreen !== false && payload.applyHighlight !== false;
   var highlightColor = payload.highlightColor || "#dcfce7";
 
   var updatedList = [];
